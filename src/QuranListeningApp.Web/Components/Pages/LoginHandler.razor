@@ -1,0 +1,79 @@
+@page "/login-handler"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using QuranListeningApp.Application.Services
+@inject UserService UserService
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid UserId { get; set; }
+    
+    [SupplyParameterFromQuery]
+    public bool RememberMe { get; set; }
+    
+    [SupplyParameterFromQuery]
+    public string Redirect { get; set; } = "/";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext == null || UserId == Guid.Empty)
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+
+        try
+        {
+            var user = await UserService.GetUserByIdAsync(UserId);
+            if (user == null)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+
+            // Create claims
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.GivenName, user.FullNameArabic),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim(ClaimTypes.Email, user.Email ?? "")
+            };
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = RememberMe,
+                ExpiresUtc = RememberMe 
+                    ? DateTimeOffset.UtcNow.AddDays(30) 
+                    : DateTimeOffset.UtcNow.AddHours(8)
+            };
+
+            await httpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(claimsIdentity),
+                authProperties);
+
+            // Route based on user role
+            var redirectUrl = user.Role switch
+            {
+                Domain.Enums.UserRole.Admin => "/admin/dashboard",
+                Domain.Enums.UserRole.Teacher => "/teacher/dashboard",
+                Domain.Enums.UserRole.Student => "/student/dashboard",
+                _ => "/"
+            };
+
+            httpContext.Response.Redirect(redirectUrl);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"LoginHandler error: {ex.Message}");
+            Navigation.NavigateTo("/login", true);
+        }
+    }
+}

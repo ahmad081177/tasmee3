@@ -1,0 +1,347 @@
+@page "/teacher/sessions/edit/{id:guid}"
+@rendermode InteractiveServer
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject ISurahReferenceRepository SurahRepository
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page-container">
+    <div class="page-header">
+        <button class="btn-back" @onclick="GoBack">← رجوع</button>
+        <h2>تعديل الجلسة</h2>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else if (session == null)
+    {
+        <div class="error-message">الجلسة غير موجودة</div>
+    }
+    else
+    {
+        <div class="form-card">
+            <div class="form-group">
+                <label>الطالب</label>
+                <select @bind="studentId" class="form-control">
+                    <option value="">اختر الطالب</option>
+                    @foreach (var student in students)
+                    {
+                        <option value="@student.Id">@student.FullNameArabic</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>السورة</label>
+                <select @bind="surahNumber" @bind:after="OnSurahChanged" class="form-control">
+                    <option value="0">اختر السورة</option>
+                    @foreach (var surah in surahs)
+                    {
+                        <option value="@surah.SurahNumber">@surah.SurahNameArabic</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>من آية</label>
+                    <input type="number" @bind="fromAyah" min="1" max="@maxAyah" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>إلى آية</label>
+                    <input type="number" @bind="toAyah" min="1" max="@maxAyah" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>اللحن الجلي (أخطاء كبرى)</label>
+                    <input type="number" @bind="majorErrors" min="0" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>اللحن الخفي (أخطاء صغرى)</label>
+                    <input type="number" @bind="minorErrors" min="0" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" @bind="isPassed" />
+                    <span>اجتاز / نجح</span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>تاريخ الجلسة</label>
+                <input type="date" @bind="sessionDate" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label>ملاحظات</label>
+                <textarea @bind="notes" rows="4" class="form-control" placeholder="أضف ملاحظات (اختياري)"></textarea>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="error-message">@errorMessage</div>
+            }
+
+            <div class="form-actions">
+                <button class="btn-save" @onclick="UpdateSession">حفظ التعديلات</button>
+                <button class="btn-cancel" @onclick="GoBack">إلغاء</button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .page-container {
+        padding: 16px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .btn-back {
+        background: #f5f5f5;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        color: #333;
+        font-size: 20px;
+    }
+
+    .loading, .error-message {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .error-message {
+        color: #d32f2f;
+        background: #ffebee;
+        border-radius: 8px;
+        margin: 16px 0;
+        padding: 12px;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-save {
+        flex: 1;
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-cancel {
+        flex: 1;
+        background: #f5f5f5;
+        color: #333;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    
+    private Domain.Entities.ListeningSession? session;
+    private List<Domain.Entities.User> students = new();
+    private List<Domain.Entities.SurahReference> surahs = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    private Guid studentId = Guid.Empty;
+    private int surahNumber = 0;
+    private int fromAyah = 1;
+    private int toAyah = 1;
+    private int majorErrors = 0;
+    private int minorErrors = 0;
+    private bool isPassed = false;
+    private DateTime sessionDate = DateTime.Today;
+    private string notes = string.Empty;
+    private int maxAyah = 286;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var allUsers = await UserService.GetAllUsersAsync();
+        students = allUsers.Where(u => u.Role == Domain.Enums.UserRole.Student).OrderBy(u => u.FullNameArabic).ToList();
+        surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
+        
+        await LoadSession();
+    }
+
+    private async Task LoadSession()
+    {
+        isLoading = true;
+        session = await SessionService.GetSessionByIdAsync(Id);
+        
+        if (session != null)
+        {
+            studentId = session.StudentUserId;
+            surahNumber = session.SurahNumber;
+            fromAyah = session.FromAyahNumber;
+            toAyah = session.ToAyahNumber;
+            majorErrors = session.MajorErrorsCount;
+            minorErrors = session.MinorErrorsCount;
+            isPassed = session.IsCompleted;
+            sessionDate = session.SessionDate;
+            notes = session.Notes ?? string.Empty;
+            
+            OnSurahChanged();
+        }
+        
+        isLoading = false;
+    }
+
+    private void OnSurahChanged()
+    {
+        var surah = surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
+        if (surah != null)
+        {
+            maxAyah = surah.TotalAyahs;
+            if (fromAyah > maxAyah) fromAyah = 1;
+            if (toAyah > maxAyah) toAyah = 1;
+        }
+    }
+
+    private async Task UpdateSession()
+    {
+        errorMessage = string.Empty;
+
+        if (studentId == Guid.Empty)
+        {
+            errorMessage = "يرجى اختيار الطالب";
+            return;
+        }
+
+        if (surahNumber == 0)
+        {
+            errorMessage = "يرجى اختيار السورة";
+            return;
+        }
+
+        if (fromAyah > toAyah)
+        {
+            errorMessage = "رقم الآية الأولى يجب أن يكون أقل من أو يساوي الآية الأخيرة";
+            return;
+        }
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUserId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            var updatedSession = new Domain.Entities.ListeningSession
+            {
+                Id = Id,
+                StudentUserId = studentId,
+                TeacherUserId = currentUserId,
+                SurahNumber = surahNumber,
+                FromAyahNumber = fromAyah,
+                ToAyahNumber = toAyah,
+                MajorErrorsCount = majorErrors,
+                MinorErrorsCount = minorErrors,
+                IsCompleted = isPassed,
+                SessionDate = sessionDate,
+                Notes = notes,
+                CreatedDate = session!.CreatedDate,
+                ModifiedDate = DateTime.UtcNow
+            };
+
+            await SessionService.UpdateSessionAsync(updatedSession, currentUserId);
+            Navigation.NavigateTo($"/teacher/sessions/view/{Id}");
+        }
+        catch
+        {
+            errorMessage = "حدث خطأ أثناء التحديث";
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo($"/teacher/sessions/view/{Id}");
+}

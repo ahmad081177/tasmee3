@@ -1,0 +1,376 @@
+@page "/admin/sessions/view/{id:guid}"
+@rendermode InteractiveServer
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject ISurahReferenceRepository SurahRepository
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page-container">
+    <div class="page-header">
+        <button class="btn-back" @onclick="GoBack">← رجوع</button>
+        <h2>تفاصيل الجلسة</h2>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else if (session == null)
+    {
+        <div class="error-message">الجلسة غير موجودة</div>
+    }
+    else
+    {
+        <div class="session-card">
+            <div class="card-section">
+                <h3>معلومات الطالب</h3>
+                <div class="info-row">
+                    <span class="label">اسم الطالب:</span>
+                    <span class="value">@session.Student?.FullNameArabic</span>
+                </div>
+                @if (!string.IsNullOrEmpty(session.Student?.GradeLevel))
+                {
+                    <div class="info-row">
+                        <span class="label">الصف:</span>
+                        <span class="value">@session.Student.GradeLevel</span>
+                    </div>
+                }
+            </div>
+
+            <div class="card-section">
+                <h3>معلومات التسميع</h3>
+                <div class="info-row">
+                    <span class="label">التاريخ:</span>
+                    <span class="value">@session.SessionDate.ToString("yyyy-MM-dd")</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">السورة:</span>
+                    <span class="value">@GetSurahName(session.SurahNumber)</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">من آية:</span>
+                    <span class="value">@session.FromAyahNumber</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">إلى آية:</span>
+                    <span class="value">@session.ToAyahNumber</span>
+                </div>
+            </div>
+
+            <div class="card-section">
+                <h3>الأخطاء والنتيجة</h3>
+                <div class="info-row">
+                    <span class="label">اللحن الجلي:</span>
+                    <span class="value error-major">@session.MajorErrorsCount</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">اللحن الخفي:</span>
+                    <span class="value error-minor">@session.MinorErrorsCount</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">الحالة:</span>
+                    <span class="value">
+                        @if (session.IsCompleted)
+                        {
+                            <span class="badge-passed">✓ اجتاز</span>
+                        }
+                        else
+                        {
+                            <span class="badge-failed">✗ لم يجتز</span>
+                        }
+                    </span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(session.Notes))
+            {
+                <div class="card-section">
+                    <h3>ملاحظات</h3>
+                    <p class="notes">@session.Notes</p>
+                </div>
+            }
+
+            <div class="card-section">
+                <div class="info-row">
+                    <span class="label">المعلم:</span>
+                    <span class="value teacher">@session.Teacher?.FullNameArabic</span>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn-edit" @onclick="EditSession">تعديل</button>
+                <button class="btn-delete" @onclick="ShowDeleteConfirm">حذف</button>
+            </div>
+        </div>
+    }
+
+    @if (showDeleteModal)
+    {
+        <div class="modal-overlay" @onclick="HideDeleteConfirm">
+            <div class="modal-content" @onclick:stopPropagation>
+                <h3>تأكيد الحذف</h3>
+                <p>هل أنت متأكد من حذف هذه الجلسة؟</p>
+                <div class="modal-actions">
+                    <button class="btn-confirm" @onclick="DeleteSession">حذف</button>
+                    <button class="btn-cancel" @onclick="HideDeleteConfirm">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .page-container {
+        padding: 16px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .btn-back {
+        background: #f5f5f5;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        color: #333;
+        font-size: 20px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .error-message {
+        text-align: center;
+        padding: 40px;
+        color: #d32f2f;
+    }
+
+    .session-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .card-section {
+        padding: 16px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .card-section:last-of-type {
+        border-bottom: none;
+    }
+
+    .card-section h3 {
+        margin: 0 0 12px 0;
+        color: #667eea;
+        font-size: 16px;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+    }
+
+    .info-row .label {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .info-row .value {
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+    }
+
+    .error-major {
+        color: #d32f2f;
+        font-weight: 600;
+    }
+
+    .error-minor {
+        color: #f57c00;
+        font-weight: 600;
+    }
+
+    .badge-passed {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #4caf50;
+        color: white;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .badge-failed {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #f44336;
+        color: white;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .notes {
+        margin: 0;
+        color: #666;
+        line-height: 1.6;
+        font-size: 14px;
+    }
+
+    .teacher {
+        color: #667eea;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .btn-edit {
+        flex: 1;
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-delete {
+        flex: 1;
+        background: #f44336;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        max-width: 400px;
+        margin: 16px;
+    }
+
+    .modal-content h3 {
+        margin: 0 0 12px 0;
+        color: #333;
+    }
+
+    .modal-content p {
+        margin: 0 0 20px 0;
+        color: #666;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-confirm {
+        flex: 1;
+        background: #f44336;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .btn-cancel {
+        flex: 1;
+        background: #f5f5f5;
+        color: #333;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    
+    private Domain.Entities.ListeningSession? session;
+    private List<Domain.Entities.SurahReference> surahs = new();
+    private bool isLoading = true;
+    private bool showDeleteModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSession();
+        surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
+    }
+
+    private async Task LoadSession()
+    {
+        isLoading = true;
+        session = await SessionService.GetSessionByIdAsync(Id);
+        isLoading = false;
+    }
+
+    private string GetSurahName(int surahNumber)
+    {
+        var surah = surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
+        return surah?.SurahNameArabic ?? surahNumber.ToString();
+    }
+
+    private void EditSession() => Navigation.NavigateTo($"/admin/sessions/edit/{Id}");
+    private void GoBack() => Navigation.NavigateTo("/admin/sessions");
+    private void ShowDeleteConfirm() => showDeleteModal = true;
+    private void HideDeleteConfirm() => showDeleteModal = false;
+
+    private async Task DeleteSession()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var currentUserId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        
+        await SessionService.DeleteSessionAsync(Id, currentUserId);
+        Navigation.NavigateTo("/admin/sessions");
+    }
+}

@@ -1,0 +1,257 @@
+@page "/admin/sessions"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Enums
+@attribute [Authorize(Roles = "Admin,Teacher")]
+@inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+<PageTitle>جلسات السماع</PageTitle>
+
+<div class="sessions-container">
+    <div class="page-header">
+        <h3>جلسات السماع</h3>
+        <button class="btn-add" @onclick="AddSession">+ جلسة</button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else if (!sessions.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">📖</div>
+            <p>لا توجد جلسات بعد</p>
+            <button class="btn-primary" @onclick="AddSession">إضافة أول جلسة</button>
+        </div>
+    }
+    else
+    {
+        <div class="session-list">
+            @foreach (var session in sessions)
+            {
+                <div class="session-card" @onclick="() => ViewSession(session.Id)">
+                    <div class="session-header">
+                        <div class="student-name">@session.Student?.FullNameArabic</div>
+                        <div class="session-date">@session.SessionDate.ToString("dd/MM/yyyy")</div>
+                    </div>
+                    <div class="session-details">
+                        <div class="detail-row">
+                            <span class="label">السورة:</span>
+                            <span class="value">@session.SurahNumber</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">من آية:</span>
+                            <span class="value">@session.FromAyahNumber - @session.ToAyahNumber</span>
+                        </div>
+                        @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0)
+                        {
+                            <div class="detail-row">
+                                <span class="label">الأخطاء:</span>
+                                <span class="value error-count">
+                                    @if (session.MajorErrorsCount > 0)
+                                    {
+                                        <span>جلي: @session.MajorErrorsCount</span>
+                                    }
+                                    @if (session.MinorErrorsCount > 0)
+                                    {
+                                        @if (session.MajorErrorsCount > 0)
+                                        {
+                                            <span> | </span>
+                                        }
+                                        <span>خفي: @session.MinorErrorsCount</span>
+                                    }
+                                </span>
+                            </div>
+                        }
+                        @if (session.IsCompleted)
+                        {
+                            <div class="detail-row">
+                                <span class="badge-passed">✓ اجتاز</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="session-footer">
+                        <span class="teacher-name">@session.Teacher?.FullNameArabic</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .sessions-container {
+        padding: 12px;
+        direction: rtl;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .page-header h3 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .btn-add {
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        color: #999;
+        margin-bottom: 20px;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .session-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .session-card {
+        background: white;
+        border-radius: 10px;
+        padding: 14px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .session-card:active {
+        transform: scale(0.98);
+    }
+
+    .session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .student-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .session-date {
+        font-size: 12px;
+        color: #666;
+        background: #f5f5f5;
+        padding: 4px 10px;
+        border-radius: 12px;
+    }
+
+    .session-details {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .detail-row {
+        display: flex;
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .detail-row .label {
+        color: #666;
+        min-width: 60px;
+    }
+
+    .detail-row .value {
+        color: #333;
+        font-weight: 500;
+    }
+
+    .error-count {
+        color: #f44336;
+        font-weight: 600;
+    }
+
+    .badge-passed {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #4caf50;
+        color: white;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .session-footer {
+        padding-top: 10px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .teacher-name {
+        font-size: 12px;
+        color: #667eea;
+    }
+</style>
+
+@code {
+    private List<Domain.Entities.ListeningSession> sessions = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSessions();
+    }
+
+    private async Task LoadSessions()
+    {
+        isLoading = true;
+        var allSessions = await SessionService.GetAllSessionsAsync();
+        sessions = allSessions.OrderByDescending(s => s.SessionDate).ToList();
+        isLoading = false;
+    }
+
+    private void AddSession() => Navigation.NavigateTo("/admin/sessions/add");
+    private void ViewSession(Guid id) => Navigation.NavigateTo($"/admin/sessions/view/{id}");
+}

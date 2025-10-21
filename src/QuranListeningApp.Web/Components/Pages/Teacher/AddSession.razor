@@ -1,0 +1,340 @@
+@page "/teacher/sessions/add"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Enums
+@using QuranListeningApp.Domain.Interfaces
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Teacher")]
+@inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject ISurahReferenceRepository SurahRepository
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>تسجيل جلسة سماع</PageTitle>
+
+<div class="add-session-container">
+    <div class="header">
+        <button class="btn-back" @onclick="GoBack">←</button>
+        <h3>تسجيل جلسة سماع</h3>
+        <div></div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">@errorMessage</div>
+    }
+
+    <div class="form-card">
+        <div class="form-group">
+            <label>الطالب</label>
+            <select class="form-input" @bind="selectedStudentId">
+                <option value="">-- اختر الطالب --</option>
+                @foreach (var student in students)
+                {
+                    <option value="@student.Id">@student.FullNameArabic</option>
+                }
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>السورة</label>
+            <select class="form-input" @bind="selectedSurahNumber" @bind:after="OnSurahChanged">
+                <option value="">-- اختر السورة --</option>
+                @foreach (var surah in surahs)
+                {
+                    <option value="@surah.SurahNumber">@surah.SurahNumber. @surah.SurahNameArabic</option>
+                }
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>من آية</label>
+                <input type="number" class="form-input" @bind="fromAyahNumber" min="1" max="@maxAyah" />
+            </div>
+            <div class="form-group">
+                <label>إلى آية</label>
+                <input type="number" class="form-input" @bind="toAyahNumber" min="1" max="@maxAyah" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>اللحن الجلي (أخطاء كبرى)</label>
+                <input type="number" class="form-input" @bind="majorErrors" min="0" />
+            </div>
+            <div class="form-group">
+                <label>اللحن الخفي (أخطاء صغرى)</label>
+                <input type="number" class="form-input" @bind="minorErrors" min="0" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" @bind="isPassed" />
+                <span>اجتاز / نجح</span>
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label>ملاحظات</label>
+            <textarea class="form-input" @bind="notes" rows="3" placeholder="ملاحظات إضافية (اختياري)"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>تاريخ الجلسة</label>
+            <input type="date" class="form-input" @bind="sessionDate" />
+        </div>
+
+        <div class="form-actions">
+            <button class="btn-cancel" @onclick="GoBack" disabled="@isSaving">إلغاء</button>
+            <button class="btn-save" @onclick="SaveSession" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span>جاري الحفظ...</span>
+                }
+                else
+                {
+                    <span>حفظ</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .add-session-container {
+        padding: 12px;
+        direction: rtl;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .btn-back {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 8px;
+        color: #667eea;
+    }
+
+    .alert-error {
+        background: #fee;
+        color: #c33;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #333;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    textarea.form-input {
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-cancel, .btn-save {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-cancel {
+        background: #f5f5f5;
+        color: #666;
+    }
+
+    .btn-save {
+        background: #4CAF50;
+        color: white;
+    }
+
+    .btn-save:disabled, .btn-cancel:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+</style>
+
+@code {
+    private List<Domain.Entities.User> students = new();
+    private List<Domain.Entities.SurahReference> surahs = new();
+    
+    private Guid? selectedStudentId;
+    private int? selectedSurahNumber;
+    private int fromAyahNumber = 1;
+    private int toAyahNumber = 1;
+    private int majorErrors = 0;
+    private int minorErrors = 0;
+    private bool isPassed = false;
+    private string notes = "";
+    private DateTime sessionDate = DateTime.Today;
+    private int maxAyah = 286;
+    
+    private bool isSaving = false;
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var allUsers = await UserService.GetAllUsersAsync();
+        students = allUsers.Where(u => u.Role == UserRole.Student).OrderBy(u => u.FullNameArabic).ToList();
+        
+        var allSurahs = await SurahRepository.GetAllAsync();
+        surahs = allSurahs.OrderBy(s => s.SurahNumber).ToList();
+    }
+
+    private void OnSurahChanged()
+    {
+        if (selectedSurahNumber.HasValue)
+        {
+            var surah = surahs.FirstOrDefault(s => s.SurahNumber == selectedSurahNumber.Value);
+            if (surah != null)
+            {
+                maxAyah = surah.TotalAyahs;
+                fromAyahNumber = 1;
+                toAyahNumber = Math.Min(10, maxAyah);
+            }
+        }
+    }
+
+    private async Task SaveSession()
+    {
+        errorMessage = "";
+
+        if (!selectedStudentId.HasValue)
+        {
+            errorMessage = "الرجاء اختيار الطالب";
+            return;
+        }
+
+        if (!selectedSurahNumber.HasValue)
+        {
+            errorMessage = "الرجاء اختيار السورة";
+            return;
+        }
+
+        if (fromAyahNumber < 1 || toAyahNumber < 1 || fromAyahNumber > toAyahNumber)
+        {
+            errorMessage = "الرجاء إدخال نطاق آيات صحيح";
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var currentUserId = Guid.Parse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            var session = new Domain.Entities.ListeningSession
+            {
+                StudentUserId = selectedStudentId.Value,
+                TeacherUserId = currentUserId,
+                SurahNumber = selectedSurahNumber.Value,
+                FromAyahNumber = fromAyahNumber,
+                ToAyahNumber = toAyahNumber,
+                MajorErrorsCount = majorErrors,
+                MinorErrorsCount = minorErrors,
+                IsCompleted = isPassed,
+                Notes = notes,
+                SessionDate = sessionDate
+            };
+
+            await SessionService.CreateSessionAsync(session, currentUserId);
+            Navigation.NavigateTo("/teacher/dashboard");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/teacher/dashboard");
+}

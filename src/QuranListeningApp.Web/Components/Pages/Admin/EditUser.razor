@@ -1,0 +1,430 @@
+@page "/admin/users/edit/{id:guid}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Enums
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Admin")]
+@inject UserService UserService
+@inject AuthService AuthService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>تعديل مستخدم</PageTitle>
+
+<div class="edit-user-container">
+    <div class="header">
+        <button class="btn-back" @onclick="GoBack">←</button>
+        <h3>تعديل المستخدم</h3>
+        <button class="btn-delete" @onclick="ConfirmDelete">🗑️</button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else if (user == null)
+    {
+        <div class="alert-error">المستخدم غير موجود</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert-error">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert-success">@successMessage</div>
+        }
+
+        <div class="form-card">
+            <div class="form-group">
+                <label>الاسم الكامل</label>
+                <input type="text" class="form-input" @bind="user.FullNameArabic" />
+            </div>
+
+            <div class="form-group">
+                <label>اسم المستخدم</label>
+                <input type="text" class="form-input" @bind="user.Username" />
+            </div>
+
+            <div class="form-group">
+                <label>رقم الهوية</label>
+                <input type="text" class="form-input" @bind="user.IdNumber" />
+            </div>
+
+            <div class="form-group">
+                <label>رقم الجوال</label>
+                <input type="tel" class="form-input" @bind="user.PhoneNumber" />
+            </div>
+
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" class="form-input" @bind="user.Email" />
+            </div>
+
+            @if (user.Role == UserRole.Student)
+            {
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>الصف الدراسي</label>
+                        <select class="form-input" @bind="baseGrade">
+                            <option value="">-- اختر الصف --</option>
+                            <option value="عاشر">عاشر</option>
+                            <option value="حادي عشر">حادي عشر</option>
+                            <option value="ثاني عشر">ثاني عشر</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>الشعبة</label>
+                        <input type="text" class="form-input" @bind="gradeSection" placeholder="1 أو ب أو ح" maxlength="10" />
+                    </div>
+                </div>
+            }
+
+            <div class="form-group">
+                <label class="switch-label">
+                    <input type="checkbox" @bind="user.IsActive" />
+                    <span>الحساب نشط</span>
+                </label>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="form-group">
+                <label>تغيير كلمة المرور (اختياري)</label>
+                <input type="password" class="form-input" @bind="newPassword" placeholder="كلمة مرور جديدة" />
+            </div>
+
+            <div class="form-actions">
+                <button class="btn-cancel" @onclick="GoBack" disabled="@isSaving">إلغاء</button>
+                <button class="btn-save" @onclick="SaveUser" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span>جاري الحفظ...</span>
+                    }
+                    else
+                    {
+                        <span>حفظ</span>
+                    }
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (showDeleteConfirm)
+    {
+        <div class="modal-overlay" @onclick="CancelDelete">
+            <div class="modal-content" @onclick:stopPropagation>
+                <h4>تأكيد الحذف</h4>
+                <p>هل أنت متأكد من حذف المستخدم @user?.FullNameArabic؟</p>
+                <div class="modal-actions">
+                    <button class="btn-cancel" @onclick="CancelDelete">إلغاء</button>
+                    <button class="btn-delete-confirm" @onclick="DeleteUser">حذف</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .edit-user-container {
+        padding: 12px;
+        direction: rtl;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .btn-back {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 8px;
+        color: #667eea;
+    }
+
+    .btn-delete {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 8px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .alert-error {
+        background: #fee;
+        color: #c33;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+    }
+
+    .alert-success {
+        background: #efe;
+        color: #3a3;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #333;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .switch-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+    }
+
+    .switch-label input[type="checkbox"] {
+        width: 44px;
+        height: 24px;
+        cursor: pointer;
+    }
+
+    .divider {
+        height: 1px;
+        background: #eee;
+        margin: 20px 0;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-cancel, .btn-save {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-cancel {
+        background: #f5f5f5;
+        color: #666;
+    }
+
+    .btn-save {
+        background: #4CAF50;
+        color: white;
+    }
+
+    .btn-save:disabled, .btn-cancel:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 400px;
+        margin: 20px;
+    }
+
+    .modal-content h4 {
+        margin: 0 0 12px 0;
+        font-size: 18px;
+    }
+
+    .modal-content p {
+        margin: 0 0 20px 0;
+        color: #666;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-delete-confirm {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #f44336;
+        color: white;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Domain.Entities.User? user;
+    private string newPassword = "";
+    private string baseGrade = "";
+    private string gradeSection = "";
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool showDeleteConfirm = false;
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUser();
+    }
+
+    private async Task LoadUser()
+    {
+        isLoading = true;
+        user = await UserService.GetUserByIdAsync(Id);
+        if (user != null && user.Role == UserRole.Student && !string.IsNullOrWhiteSpace(user.GradeLevel))
+        {
+            var parts = user.GradeLevel.Split(' ', 2);
+            baseGrade = parts[0];
+            gradeSection = parts.Length > 1 ? parts[1] : "";
+        }
+        isLoading = false;
+    }
+
+    private async Task SaveUser()
+    {
+        if (user == null) return;
+
+        errorMessage = "";
+        successMessage = "";
+
+        try
+        {
+            isSaving = true;
+
+            // Combine base grade and section before saving
+            if (user.Role == UserRole.Student && !string.IsNullOrWhiteSpace(baseGrade))
+            {
+                user.GradeLevel = string.IsNullOrWhiteSpace(gradeSection) 
+                    ? baseGrade 
+                    : $"{baseGrade} {gradeSection}";
+            }
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var currentUserId = Guid.Parse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            await UserService.UpdateUserAsync(user, currentUserId);
+
+            if (!string.IsNullOrWhiteSpace(newPassword))
+            {
+                await AuthService.ResetPasswordAsync(user.Id, newPassword, currentUserId);
+            }
+
+            successMessage = "تم الحفظ بنجاح";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void ConfirmDelete()
+    {
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+    }
+
+    private async Task DeleteUser()
+    {
+        if (user == null) return;
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var currentUserId = Guid.Parse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            await UserService.DeleteUserAsync(user.Id, currentUserId);
+            Navigation.NavigateTo("/admin/users");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ: {ex.Message}";
+            showDeleteConfirm = false;
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/admin/users");
+}

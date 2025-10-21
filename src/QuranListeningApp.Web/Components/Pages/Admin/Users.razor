@@ -1,0 +1,265 @@
+@page "/admin/users"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Enums
+@attribute [Authorize(Roles = "Admin")]
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+<PageTitle>المستخدمون</PageTitle>
+
+<div class="users-container">
+    <div class="page-header">
+        <h3>المستخدمون</h3>
+        <button class="btn-add" @onclick="AddUser">+ إضافة</button>
+    </div>
+
+    <div class="filter-tabs">
+        <button class="tab @(activeRole == null ? "active" : "")" @onclick="() => FilterByRole(null)">
+            الكل (@totalCount)
+        </button>
+        <button class="tab @(activeRole == UserRole.Teacher ? "active" : "")" @onclick="() => FilterByRole(UserRole.Teacher)">
+            معلمون (@teacherCount)
+        </button>
+        <button class="tab @(activeRole == UserRole.Student ? "active" : "")" @onclick="() => FilterByRole(UserRole.Student)">
+            طلاب (@studentCount)
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else
+    {
+        <div class="user-list">
+            @foreach (var user in filteredUsers)
+            {
+                <div class="user-card" @onclick="() => EditUser(user.Id)">
+                    <div class="user-info">
+                        <div class="user-name">@user.FullNameArabic</div>
+                        <div class="user-meta">
+                            <span class="badge @GetRoleBadgeClass(user.Role)">@GetRoleText(user.Role)</span>
+                            @if (user.Role == UserRole.Student && !string.IsNullOrEmpty(user.GradeLevel))
+                            {
+                                <span class="grade">الصف @user.GradeLevel</span>
+                            }
+                        </div>
+                        <div class="user-details">
+                            <span>@user.Username</span>
+                            @if (!string.IsNullOrEmpty(user.PhoneNumber))
+                            {
+                                <span>@user.PhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="user-status">
+                        @if (user.IsActive)
+                        {
+                            <span class="status-active">●</span>
+                        }
+                        else
+                        {
+                            <span class="status-inactive">○</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .users-container {
+        padding: 12px;
+        direction: rtl;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .page-header h3 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .btn-add {
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        overflow-x: auto;
+    }
+
+    .tab {
+        padding: 8px 16px;
+        border: none;
+        background: #f5f5f5;
+        border-radius: 8px;
+        font-size: 14px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .tab.active {
+        background: #667eea;
+        color: white;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .user-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .user-card {
+        background: white;
+        border-radius: 10px;
+        padding: 14px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .user-card:active {
+        transform: scale(0.98);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+
+    .user-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+
+    .badge {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge.teacher {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .badge.student {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .grade {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .user-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .user-status {
+        font-size: 24px;
+    }
+
+    .status-active {
+        color: #4CAF50;
+    }
+
+    .status-inactive {
+        color: #ccc;
+    }
+</style>
+
+@code {
+    private List<Domain.Entities.User> allUsers = new();
+    private List<Domain.Entities.User> filteredUsers = new();
+    private UserRole? activeRole = null;
+    private bool isLoading = true;
+    private int totalCount = 0;
+    private int teacherCount = 0;
+    private int studentCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        var users = await UserService.GetAllUsersAsync();
+        allUsers = users.ToList();
+        totalCount = allUsers.Count;
+        teacherCount = allUsers.Count(u => u.Role == UserRole.Teacher);
+        studentCount = allUsers.Count(u => u.Role == UserRole.Student);
+        FilterByRole(activeRole);
+        isLoading = false;
+    }
+
+    private void FilterByRole(UserRole? role)
+    {
+        activeRole = role;
+        filteredUsers = role.HasValue 
+            ? allUsers.Where(u => u.Role == role.Value).ToList()
+            : allUsers;
+    }
+
+    private string GetRoleText(UserRole role) => role switch
+    {
+        UserRole.Teacher => "معلم",
+        UserRole.Student => "طالب",
+        UserRole.Admin => "مدير",
+        _ => ""
+    };
+
+    private string GetRoleBadgeClass(UserRole role) => role switch
+    {
+        UserRole.Teacher => "teacher",
+        UserRole.Student => "student",
+        _ => ""
+    };
+
+    private void AddUser() => Navigation.NavigateTo("/admin/users/add");
+    private void EditUser(Guid id) => Navigation.NavigateTo($"/admin/users/edit/{id}");
+}

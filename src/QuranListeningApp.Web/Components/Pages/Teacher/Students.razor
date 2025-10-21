@@ -1,0 +1,232 @@
+@page "/teacher/students"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using QuranListeningApp.Application.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize(Roles = "Teacher")]
+@inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page-container">
+    <div class="page-header">
+        <button class="btn-back" @onclick="GoBack">← رجوع</button>
+        <h2>طلابي</h2>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else if (!students.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <p>لا يوجد طلاب بعد</p>
+        </div>
+    }
+    else
+    {
+        <div class="students-list">
+            @foreach (var student in students)
+            {
+                var studentSessions = sessions.Where(s => s.StudentUserId == student.Id).ToList();
+                var totalSessions = studentSessions.Count;
+                var passedSessions = studentSessions.Count(s => s.IsCompleted);
+
+                <div class="student-card" @onclick="@(() => ViewStudentSessions(student.Id))">
+                    <div class="student-header">
+                        <span class="student-name">@student.FullNameArabic</span>
+                        @if (!string.IsNullOrEmpty(student.GradeLevel))
+                        {
+                            <span class="grade-badge">@student.GradeLevel</span>
+                        }
+                    </div>
+                    <div class="student-stats">
+                        <div class="stat">
+                            <span class="stat-label">الجلسات:</span>
+                            <span class="stat-value">@totalSessions</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">اجتاز:</span>
+                            <span class="stat-value success">@passedSessions</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">لم يجتز:</span>
+                            <span class="stat-value error">@(totalSessions - passedSessions)</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .page-container {
+        padding: 16px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .btn-back {
+        background: #f5f5f5;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        color: #333;
+        font-size: 20px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        color: #999;
+        margin: 0;
+    }
+
+    .students-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .student-card {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .student-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .student-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .student-name {
+        font-weight: 600;
+        color: #333;
+        font-size: 16px;
+    }
+
+    .grade-badge {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .student-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .stat {
+        text-align: center;
+        padding: 8px;
+        background: #f9f9f9;
+        border-radius: 8px;
+    }
+
+    .stat-label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .stat-value.success {
+        color: #4caf50;
+    }
+
+    .stat-value.error {
+        color: #f44336;
+    }
+</style>
+
+@code {
+    private List<Domain.Entities.User> students = new();
+    private List<Domain.Entities.ListeningSession> sessions = new();
+    private bool isLoading = true;
+    private Guid currentTeacherId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentTeacherId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        var allSessions = await SessionService.GetAllSessionsAsync();
+        sessions = allSessions.Where(s => s.TeacherUserId == currentTeacherId).ToList();
+
+        var studentIds = sessions.Select(s => s.StudentUserId).Distinct().ToList();
+        
+        var allUsers = await UserService.GetAllUsersAsync();
+        students = allUsers.Where(u => studentIds.Contains(u.Id))
+                          .OrderBy(u => u.FullNameArabic)
+                          .ToList();
+
+        isLoading = false;
+    }
+
+    private void ViewStudentSessions(Guid studentId)
+    {
+        // Future: Navigate to student-specific sessions page
+        Navigation.NavigateTo("/teacher/sessions");
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/teacher/dashboard");
+}

@@ -1,0 +1,356 @@
+@page "/student/dashboard"
+@rendermode InteractiveServer
+@using QuranListeningApp.Application.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ListeningSessionService SessionService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page-container">
+    <div class="page-header">
+        <h2>لوحة الطالب</h2>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else
+    {
+        <div class="welcome-card">
+            <h3>مرحباً @studentName</h3>
+            @if (!string.IsNullOrEmpty(gradeLevel))
+            {
+                <p class="grade">الصف: @gradeLevel</p>
+            }
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">@totalSessions</div>
+                <div class="stat-label">إجمالي الجلسات</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-value">@passedSessions</div>
+                <div class="stat-label">اجتزت</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-value">@failedSessions</div>
+                <div class="stat-label">لم تجتز</div>
+            </div>
+        </div>
+
+        @if (recentSessions.Any())
+        {
+            <div class="section">
+                <h3>آخر جلساتي</h3>
+                <div class="session-list">
+                    @foreach (var session in recentSessions)
+                    {
+                        <div class="session-card">
+                            <div class="session-header">
+                                <span class="session-date">@session.SessionDate.ToString("yyyy-MM-dd")</span>
+                                @if (session.IsCompleted)
+                                {
+                                    <span class="badge-passed">✓ اجتزت</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-failed">✗ لم أجتز</span>
+                                }
+                            </div>
+                            <div class="session-info">
+                                <div class="info-item">
+                                    <span class="label">السورة:</span>
+                                    <span class="value">@session.SurahNumber</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">الآيات:</span>
+                                    <span class="value">@session.FromAyahNumber - @session.ToAyahNumber</span>
+                                </div>
+                            </div>
+                            @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0)
+                            {
+                                <div class="errors-row">
+                                    @if (session.MajorErrorsCount > 0)
+                                    {
+                                        <span class="error-badge major">جلي: @session.MajorErrorsCount</span>
+                                    }
+                                    @if (session.MinorErrorsCount > 0)
+                                    {
+                                        <span class="error-badge minor">خفي: @session.MinorErrorsCount</span>
+                                    }
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(session.Notes))
+                            {
+                                <div class="notes">
+                                    <strong>ملاحظات:</strong> @session.Notes
+                                </div>
+                            }
+                            <div class="teacher-info">
+                                المعلم: @session.Teacher?.FullNameArabic
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📖</div>
+                <p>لا توجد جلسات بعد</p>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .page-container {
+        padding: 16px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .page-header h2 {
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 24px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .welcome-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 24px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .welcome-card h3 {
+        margin: 0 0 8px 0;
+        font-size: 20px;
+    }
+
+    .welcome-card .grade {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .stat-card.success {
+        background: #e8f5e9;
+    }
+
+    .stat-card.error {
+        background: #ffebee;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .stat-card.success .stat-value {
+        color: #4caf50;
+    }
+
+    .stat-card.error .stat-value {
+        color: #f44336;
+    }
+
+    .stat-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .section {
+        margin-bottom: 24px;
+    }
+
+    .section h3 {
+        margin: 0 0 12px 0;
+        color: #333;
+        font-size: 18px;
+    }
+
+    .session-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .session-card {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .session-date {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .badge-passed {
+        background: #4caf50;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-failed {
+        background: #f44336;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .session-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .info-item {
+        font-size: 13px;
+    }
+
+    .info-item .label {
+        color: #666;
+    }
+
+    .info-item .value {
+        color: #333;
+        font-weight: 500;
+    }
+
+    .errors-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .error-badge {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .error-badge.major {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .error-badge.minor {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .notes {
+        background: #f9f9f9;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
+
+    .teacher-info {
+        font-size: 12px;
+        color: #667eea;
+        padding-top: 8px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        color: #999;
+        margin: 0;
+    }
+</style>
+
+@code {
+    private bool isLoading = true;
+    private string studentName = "";
+    private string gradeLevel = "";
+    private int totalSessions = 0;
+    private int passedSessions = 0;
+    private int failedSessions = 0;
+    private List<Domain.Entities.ListeningSession> recentSessions = new();
+    private Guid currentStudentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentStudentId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        studentName = authState.User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "";
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        var allSessions = await SessionService.GetAllSessionsAsync();
+        var mySessions = allSessions.Where(s => s.StudentUserId == currentStudentId).ToList();
+
+        totalSessions = mySessions.Count;
+        passedSessions = mySessions.Count(s => s.IsCompleted);
+        failedSessions = totalSessions - passedSessions;
+
+        recentSessions = mySessions.OrderByDescending(s => s.SessionDate).Take(10).ToList();
+
+        isLoading = false;
+    }
+}

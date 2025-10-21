@@ -1,0 +1,287 @@
+@page "/teacher/dashboard"
+@rendermode InteractiveServer
+@using QuranListeningApp.Application.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page-container">
+    <div class="page-header">
+        <h2>لوحة المعلم</h2>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else
+    {
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">@studentCount</div>
+                <div class="stat-label">الطلاب</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">@todaySessionCount</div>
+                <div class="stat-label">جلسات اليوم</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">@totalSessionCount</div>
+                <div class="stat-label">إجمالي الجلسات</div>
+            </div>
+        </div>
+
+        <div class="actions-section">
+            <button class="action-btn primary" @onclick="@(() => Navigation.NavigateTo("/teacher/sessions/add"))">
+                <span class="btn-icon">➕</span>
+                <span>جلسة جديدة</span>
+            </button>
+            <button class="action-btn" @onclick="@(() => Navigation.NavigateTo("/teacher/sessions"))">
+                <span class="btn-icon">📋</span>
+                <span>جلساتي</span>
+            </button>
+            <button class="action-btn" @onclick="@(() => Navigation.NavigateTo("/teacher/students"))">
+                <span class="btn-icon">👥</span>
+                <span>طلابي</span>
+            </button>
+        </div>
+
+        @if (recentSessions.Any())
+        {
+            <div class="section">
+                <h3>آخر الجلسات</h3>
+                <div class="session-list">
+                    @foreach (var session in recentSessions)
+                    {
+                        <div class="session-card" @onclick="@(() => Navigation.NavigateTo($"/teacher/sessions/view/{session.Id}"))">
+                            <div class="session-header">
+                                <span class="student-name">@session.Student?.FullNameArabic</span>
+                                <span class="session-date">@session.SessionDate.ToString("yyyy-MM-dd")</span>
+                            </div>
+                            <div class="session-details">
+                                <span>سورة @GetSurahName(session.SurahNumber): @session.FromAyahNumber-@session.ToAyahNumber</span>
+                                @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0)
+                                {
+                                    <span class="errors">
+                                        @if (session.MajorErrorsCount > 0) { <text>جلي: @session.MajorErrorsCount</text> }
+                                        @if (session.MinorErrorsCount > 0) 
+                                        { 
+                                            @if (session.MajorErrorsCount > 0) { <text> | </text> }
+                                            <text>خفي: @session.MinorErrorsCount</text> 
+                                        }
+                                    </span>
+                                }
+                            </div>
+                            @if (session.IsCompleted)
+                            {
+                                <span class="badge-passed">✓ اجتاز</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .page-container {
+        padding: 16px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .page-header h2 {
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 24px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 8px;
+    }
+
+    .stat-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .actions-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        padding: 16px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        border-color: #667eea;
+        background: #f5f7ff;
+    }
+
+    .action-btn.primary {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .action-btn.primary:hover {
+        background: #5568d3;
+    }
+
+    .btn-icon {
+        font-size: 20px;
+    }
+
+    .section {
+        margin-bottom: 24px;
+    }
+
+    .section h3 {
+        margin: 0 0 12px 0;
+        color: #333;
+        font-size: 18px;
+    }
+
+    .session-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .session-card {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .session-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .student-name {
+        font-weight: 600;
+        color: #333;
+        font-size: 15px;
+    }
+
+    .session-date {
+        color: #999;
+        font-size: 13px;
+    }
+
+    .session-details {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .errors {
+        color: #f44336;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .badge-passed {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #4caf50;
+        color: white;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
+
+@code {
+    private bool isLoading = true;
+    private int studentCount = 0;
+    private int todaySessionCount = 0;
+    private int totalSessionCount = 0;
+    private List<Domain.Entities.ListeningSession> recentSessions = new();
+    private Guid currentTeacherId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentTeacherId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        var allSessions = await SessionService.GetAllSessionsAsync();
+        var mySessions = allSessions.Where(s => s.TeacherUserId == currentTeacherId).ToList();
+
+        totalSessionCount = mySessions.Count;
+        todaySessionCount = mySessions.Count(s => s.SessionDate.Date == DateTime.Today);
+        
+        var studentIds = mySessions.Select(s => s.StudentUserId).Distinct();
+        studentCount = studentIds.Count();
+
+        recentSessions = mySessions.OrderByDescending(s => s.SessionDate).Take(5).ToList();
+
+        isLoading = false;
+    }
+
+    private string GetSurahName(int surahNumber)
+    {
+        return $"سورة {surahNumber}";
+    }
+}

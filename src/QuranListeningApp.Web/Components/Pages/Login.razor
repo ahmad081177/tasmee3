@@ -1,0 +1,240 @@
+@page "/login"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Components.Forms
+@using QuranListeningApp.Application.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>تسجيل الدخول - Quran Listening App</PageTitle>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h2>تسجيل الدخول</h2>
+            <p>نظام إدارة سماع القرآن الكريم</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @errorMessage
+            </div>
+        }
+
+        <div class="form-group">
+            <label for="username">اسم المستخدم</label>
+            <input id="username" type="text" class="form-control" @bind="username" placeholder="أدخل اسم المستخدم" />
+        </div>
+
+        <div class="form-group">
+            <label for="password">كلمة المرور</label>
+            <input id="password" type="password" class="form-control" @bind="password" placeholder="أدخل كلمة المرور" />
+        </div>
+
+        <div class="form-group form-check">
+            <input id="rememberMe" type="checkbox" class="form-check-input" @bind="rememberMe" />
+            <label class="form-check-label" for="rememberMe">
+                تذكرني
+            </label>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-block" @onclick="HandleLogin" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span> جاري التحميل...</span>
+                }
+                else
+                {
+                    <span>دخول</span>
+                }
+            </button>
+
+        <div class="login-footer">
+            <p class="text-muted">نسخة تجريبية - Demo Account: admin / Admin@123</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        direction: rtl;
+    }
+
+    .login-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        padding: 40px;
+        width: 100%;
+        max-width: 450px;
+        margin: 20px;
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .login-header h2 {
+        color: #333;
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .login-header p {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .alert {
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .alert-danger {
+        background-color: #fee;
+        color: #c33;
+        border: 1px solid #fcc;
+    }
+
+    .login-footer {
+        margin-top: 30px;
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .validation-message {
+        color: #c33;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+</style>
+
+@code {
+    private string username = "";
+    private string password = "";
+    private bool rememberMe = false;
+    private string? errorMessage;
+    private bool isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                errorMessage = "الرجاء إدخال اسم المستخدم وكلمة المرور";
+                return;
+            }
+
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext == null)
+            {
+                errorMessage = "خطأ في النظام. يرجى المحاولة مرة أخرى.";
+                return;
+            }
+
+            var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+            var user = await AuthService.AuthenticateAsync(username, password, ipAddress);
+
+            if (user == null)
+            {
+                errorMessage = "اسم المستخدم أو كلمة المرور غير صحيحة.";
+                return;
+            }
+
+            // Store user info in session/temp storage and redirect to login handler
+            var redirectUrl = user.Role switch
+            {
+                Domain.Enums.UserRole.Admin => "/admin",
+                Domain.Enums.UserRole.Teacher => "/teacher",
+                Domain.Enums.UserRole.Student => "/student",
+                _ => "/"
+            };
+
+            // Navigate to login-handler with query params
+            Navigation.NavigateTo($"/login-handler?userId={user.Id}&rememberMe={rememberMe}&redirect={Uri.EscapeDataString(redirectUrl)}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.";
+            Console.WriteLine($"Login error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

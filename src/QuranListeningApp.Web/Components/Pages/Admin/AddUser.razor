@@ -1,0 +1,307 @@
+@page "/admin/users/add"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Enums
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Admin")]
+@inject UserService UserService
+@inject AuthService AuthService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>إضافة مستخدم</PageTitle>
+
+<div class="add-user-container">
+    <div class="header">
+        <button class="btn-back" @onclick="GoBack">←</button>
+        <h3>إضافة مستخدم جديد</h3>
+        <div></div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">@errorMessage</div>
+    }
+
+    <div class="form-card">
+        <div class="form-group">
+            <label>الاسم الكامل</label>
+            <input type="text" class="form-input" @bind="fullName" placeholder="أدخل الاسم الكامل" />
+        </div>
+
+        <div class="form-group">
+            <label>اسم المستخدم</label>
+            <input type="text" class="form-input" @bind="username" placeholder="أدخل اسم المستخدم" />
+        </div>
+
+        <div class="form-group">
+            <label>كلمة المرور</label>
+            <input type="password" class="form-input" @bind="password" placeholder="أدخل كلمة المرور" />
+        </div>
+
+        <div class="form-group">
+            <label>رقم الهوية</label>
+            <input type="text" class="form-input" @bind="idNumber" placeholder="أدخل رقم الهوية" />
+        </div>
+
+        <div class="form-group">
+            <label>رقم الجوال</label>
+            <input type="tel" class="form-input" @bind="phoneNumber" placeholder="05xxxxxxxx" />
+        </div>
+
+        <div class="form-group">
+            <label>البريد الإلكتروني</label>
+            <input type="email" class="form-input" @bind="email" placeholder="example@email.com" />
+        </div>
+
+        <div class="form-group">
+            <label>الدور</label>
+            <select class="form-input" @bind="selectedRole">
+                <option value="">-- اختر الدور --</option>
+                <option value="@UserRole.Teacher">معلم</option>
+                <option value="@UserRole.Student">طالب</option>
+            </select>
+        </div>
+
+        @if (selectedRole == UserRole.Student)
+        {
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الصف الدراسي</label>
+                    <select class="form-input" @bind="baseGrade">
+                        <option value="">-- اختر الصف --</option>
+                        <option value="عاشر">عاشر</option>
+                        <option value="حادي عشر">حادي عشر</option>
+                        <option value="ثاني عشر">ثاني عشر</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الشعبة</label>
+                    <input type="text" class="form-input" @bind="gradeSection" placeholder="1 أو ب أو ح" maxlength="10" />
+                </div>
+            </div>
+        }
+
+        <div class="form-actions">
+            <button class="btn-cancel" @onclick="GoBack" disabled="@isSaving">إلغاء</button>
+            <button class="btn-save" @onclick="SaveUser" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span>جاري الحفظ...</span>
+                }
+                else
+                {
+                    <span>حفظ</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .add-user-container {
+        padding: 12px;
+        direction: rtl;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .btn-back {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 8px;
+        color: #667eea;
+    }
+
+    .alert-error {
+        background: #fee;
+        color: #c33;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #333;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-cancel, .btn-save {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-cancel {
+        background: #f5f5f5;
+        color: #666;
+    }
+
+    .btn-save {
+        background: #4CAF50;
+        color: white;
+    }
+
+    .btn-cancel:active {
+        transform: scale(0.98);
+    }
+
+    .btn-save:active {
+        transform: scale(0.98);
+    }
+
+    .btn-save:disabled, .btn-cancel:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+</style>
+
+@code {
+    private string fullName = "";
+    private string username = "";
+    private string password = "";
+    private string idNumber = "";
+    private string phoneNumber = "";
+    private string email = "";
+    private UserRole? selectedRole = null;
+    private string baseGrade = "";
+    private string gradeSection = "";
+    private bool isSaving = false;
+    private string errorMessage = "";
+
+    private async Task SaveUser()
+    {
+        errorMessage = "";
+
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            errorMessage = "الرجاء إدخال الاسم الكامل";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            errorMessage = "الرجاء إدخال اسم المستخدم";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "الرجاء إدخال كلمة المرور";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(idNumber))
+        {
+            errorMessage = "الرجاء إدخال رقم الهوية";
+            return;
+        }
+
+        if (!selectedRole.HasValue)
+        {
+            errorMessage = "الرجاء اختيار الدور";
+            return;
+        }
+
+        if (selectedRole == UserRole.Student && string.IsNullOrWhiteSpace(baseGrade))
+        {
+            errorMessage = "الرجاء اختيار الصف الدراسي";
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var currentUserId = Guid.Parse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            var gradeLevel = selectedRole == UserRole.Student && !string.IsNullOrWhiteSpace(baseGrade)
+                ? string.IsNullOrWhiteSpace(gradeSection) ? baseGrade : $"{baseGrade} {gradeSection}"
+                : null;
+
+            var user = new Domain.Entities.User
+            {
+                FullNameArabic = fullName,
+                Username = username,
+                IdNumber = idNumber,
+                PhoneNumber = phoneNumber,
+                Email = email,
+                Role = selectedRole.Value,
+                GradeLevel = gradeLevel,
+                IsActive = true,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password)
+            };
+
+            await UserService.CreateUserAsync(user, currentUserId);
+            Navigation.NavigateTo("/admin/users");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/admin/users");
+}
