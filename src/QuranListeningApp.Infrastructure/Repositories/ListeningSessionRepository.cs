@@ -61,6 +61,36 @@ public class ListeningSessionRepository : IListeningSessionRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<ListeningSession>> GetSessionsByStudentIdAsync(Guid studentId, DateTime fromDate, DateTime toDate)
+    {
+        return await _context.ListeningSessions
+            .Include(s => s.Student)
+            .Include(s => s.Teacher)
+            .Where(s => s.StudentUserId == studentId && s.SessionDate >= fromDate && s.SessionDate <= toDate)
+            .OrderByDescending(s => s.SessionDate)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<ListeningSession>> GetSessionsByTeacherIdAsync(Guid teacherId, DateTime fromDate, DateTime toDate)
+    {
+        return await _context.ListeningSessions
+            .Include(s => s.Student)
+            .Include(s => s.Teacher)
+            .Where(s => s.TeacherUserId == teacherId && s.SessionDate >= fromDate && s.SessionDate <= toDate)
+            .OrderByDescending(s => s.SessionDate)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<ListeningSession>> GetSessionsByDateRangeAsync(DateTime fromDate, DateTime toDate)
+    {
+        return await _context.ListeningSessions
+            .Include(s => s.Student)
+            .Include(s => s.Teacher)
+            .Where(s => s.SessionDate >= fromDate && s.SessionDate <= toDate)
+            .OrderByDescending(s => s.SessionDate)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<ListeningSession>> GetCompletedSessionsAsync()
     {
         return await _context.ListeningSessions

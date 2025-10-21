@@ -12,6 +12,9 @@ public interface IListeningSessionRepository
     Task<IEnumerable<ListeningSession>> GetByStudentIdAsync(Guid studentId);
     Task<IEnumerable<ListeningSession>> GetByTeacherIdAsync(Guid teacherId);
     Task<IEnumerable<ListeningSession>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
+    Task<IEnumerable<ListeningSession>> GetSessionsByStudentIdAsync(Guid studentId, DateTime fromDate, DateTime toDate);
+    Task<IEnumerable<ListeningSession>> GetSessionsByTeacherIdAsync(Guid teacherId, DateTime fromDate, DateTime toDate);
+    Task<IEnumerable<ListeningSession>> GetSessionsByDateRangeAsync(DateTime fromDate, DateTime toDate);
     Task<IEnumerable<ListeningSession>> GetCompletedSessionsAsync();
     Task<IEnumerable<ListeningSession>> GetPendingSessionsAsync();
     Task<IEnumerable<ListeningSession>> GetRecentSessionsAsync(int count);

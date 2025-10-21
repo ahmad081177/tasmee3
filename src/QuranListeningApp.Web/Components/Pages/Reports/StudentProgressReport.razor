@@ -1,0 +1,431 @@
+@page "/admin/reports/student/{studentId:guid}"
+@page "/teacher/reports/student/{studentId:guid}"
+@layout AdminLayout
+@using QuranListeningApp.Application.DTOs.Reports
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Entities
+@using QuranListeningApp.Domain.Enums
+@using QuranListeningApp.Domain.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using System.Security.Claims
+@inject IReportService ReportService
+@inject ISurahReferenceRepository SurahRepository
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>تقرير تقدم الطالب</PageTitle>
+
+@if (Loading)
+{
+    <div class="text-center p-4">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">جاري التحميل...</span>
+        </div>
+        <p class="mt-2">جاري تحميل التقرير...</p>
+    </div>
+}
+else if (Report != null)
+{
+    <div class="container-fluid">
+        <!-- Header with Back Button -->
+        <div class="d-flex justify-content-between align-items-center mb-4 header-left">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-primary btn-back me-3" @onclick="BackToDashboard">
+                    ← العودة
+                </button>
+                <h2 class="mb-0">تقرير تقدم الطالب</h2>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-success" @onclick="ExportToExcel" disabled="@ExportingExcel">
+                    @if (ExportingExcel)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    }
+                    <i class="fas fa-file-excel me-1"></i>
+                    تصدير إلى Excel
+                </button>
+                <button class="btn btn-danger" @onclick="ExportToPdf" disabled="@ExportingPdf">
+                    @if (ExportingPdf)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    }
+                    <i class="fas fa-file-pdf me-1"></i>
+                    تصدير إلى PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Report Filter Form -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">إعدادات التقرير</h5>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">من تاريخ</label>
+                        <input type="date" class="form-control" @bind="FromDate" @bind:event="oninput" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">إلى تاريخ</label>
+                        <input type="date" class="form-control" @bind="ToDate" @bind:event="oninput" />
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button class="btn btn-primary" @onclick="RefreshReport">
+                            <i class="fas fa-refresh me-1"></i>
+                            تحديث التقرير
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Information -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">معلومات الطالب</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="fw-bold">الاسم:</td>
+                                <td>@Report.Student.FullNameArabic</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">رقم الهوية:</td>
+                                <td>@Report.Student.IdNumber</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">الصف:</td>
+                                <td>@Report.Student.GradeLevel</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">رقم الهاتف:</td>
+                                <td>@Report.Student.PhoneNumber</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">ملخص الأداء</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="fw-bold">إجمالي الجلسات:</td>
+                                <td><span class="badge bg-primary">@Report.Summary.TotalSessions</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">الجلسات المكتملة:</td>
+                                <td><span class="badge bg-success">@Report.Summary.CompletedSessions</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">معدل الإكمال:</td>
+                                <td><span class="badge bg-info">@($"{Report.Summary.CompletionRate:F1}%")</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">متوسط الأخطاء الكبيرة:</td>
+                                <td><span class="badge bg-warning">@($"{Report.Summary.AverageMajorErrors:F1}")</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">متوسط الأخطاء الصغيرة:</td>
+                                <td><span class="badge bg-secondary">@($"{Report.Summary.AverageMinorErrors:F1}")</span></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sessions by Teacher Summary -->
+        @if (Report.Summary.SessionsByTeacher.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">ملخص الجلسات حسب المعلم</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>المعلم</th>
+                                    <th>عدد الجلسات</th>
+                                    <th>مكتملة</th>
+                                    <th>أخطاء كبيرة</th>
+                                    <th>أخطاء صغيرة</th>
+                                    <th>معدل الإكمال</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var teacherSummary in Report.Summary.SessionsByTeacher)
+                                {
+                                    <tr>
+                                        <td>@teacherSummary.Teacher.FullNameArabic</td>
+                                        <td><span class="badge bg-primary">@teacherSummary.SessionCount</span></td>
+                                        <td><span class="badge bg-success">@teacherSummary.CompletedCount</span></td>
+                                        <td><span class="badge bg-warning">@teacherSummary.MajorErrors</span></td>
+                                        <td><span class="badge bg-secondary">@teacherSummary.MinorErrors</span></td>
+                                        <td>
+                                            @{
+                                                var completionRate = teacherSummary.SessionCount > 0 ? (double)teacherSummary.CompletedCount / teacherSummary.SessionCount * 100 : 0;
+                                            }
+                                            <span class="badge bg-info">@($"{completionRate:F1}%")</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Sessions Details -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    تفاصيل الجلسات
+                    <span class="badge bg-secondary ms-2">@Report.Sessions.Count جلسة</span>
+                </h5>
+                
+                @if (Report.Sessions.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>المعلم</th>
+                                    <th>السورة</th>
+                                    <th>من آية</th>
+                                    <th>إلى آية</th>
+                                    <th>أخطاء كبيرة</th>
+                                    <th>أخطاء صغيرة</th>
+                                    <th>الحالة</th>
+                                    <th>ملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var session in Report.Sessions.OrderByDescending(s => s.SessionDate))
+                                {
+                                    <tr>
+                                        <td>@session.SessionDate.ToString("dd/MM/yyyy")</td>
+                                        <td>@(session.Teacher?.FullNameArabic ?? "غير محدد")</td>
+                                        <td>@GetSurahName(session.SurahNumber)</td>
+                                        <td>@session.FromAyahNumber</td>
+                                        <td>@session.ToAyahNumber</td>
+                                        <td>
+                                            @if (session.MajorErrorsCount > 0)
+                                            {
+                                                <span class="badge bg-danger">@session.MajorErrorsCount</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">0</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (session.MinorErrorsCount > 0)
+                                            {
+                                                <span class="badge bg-warning">@session.MinorErrorsCount</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">0</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (session.IsCompleted)
+                                            {
+                                                <span class="badge bg-success">مكتمل</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">غير مكتمل</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(session.Notes))
+                                            {
+                                                <span class="text-truncate" style="max-width: 200px;" title="@session.Notes">
+                                                    @session.Notes
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center p-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">لا توجد جلسات في الفترة المحددة</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        @ErrorMessage
+    </div>
+}
+
+@code {
+    [Parameter] public Guid StudentId { get; set; }
+
+    private StudentProgressReportDto? Report;
+    private List<SurahReference> Surahs = new();
+    private DateTime FromDate = DateTime.Now.AddMonths(-3);
+    private DateTime ToDate = DateTime.Now;
+    private bool Loading = true;
+    private bool ExportingExcel = false;
+    private bool ExportingPdf = false;
+    private string? ErrorMessage;
+    private bool IsAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            
+            if (!user.Identity?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            var role = user.FindFirst(ClaimTypes.Role)?.Value;
+            IsAdmin = role == UserRole.Admin.ToString();
+
+            // Load Surah references (cache this if possible)
+            await LoadSurahs();
+
+            // Load initial report
+            await LoadReport();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"خطأ في تحميل البيانات: {ex.Message}";
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+
+    private async Task LoadSurahs()
+    {
+        try
+        {
+            var surahData = await SurahRepository.GetAllAsync();
+            Surahs = surahData.ToList();
+        }
+        catch (Exception)
+        {
+            // Fallback to basic naming if Surah repository fails
+            Surahs = new List<SurahReference>();
+            for (int i = 1; i <= 114; i++)
+            {
+                Surahs.Add(new SurahReference { SurahNumber = i, SurahNameArabic = $"سورة {i}" });
+            }
+        }
+    }
+
+    private async Task LoadReport()
+    {
+        try
+        {
+            Loading = true;
+            Report = await ReportService.GetStudentProgressReportAsync(StudentId, FromDate, ToDate);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"خطأ في تحميل التقرير: {ex.Message}";
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+
+    private async Task RefreshReport()
+    {
+        await LoadReport();
+    }
+
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            ExportingExcel = true;
+            var excelData = await ReportService.ExportStudentProgressToExcelAsync(StudentId, FromDate, ToDate);
+            var fileName = $"تقرير_تقدم_الطالب_{Report?.Student.FullNameArabic}_{DateTime.Now:yyyyMMdd}.xlsx";
+            await DownloadFile(excelData, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"خطأ في تصدير ملف Excel: {ex.Message}");
+        }
+        finally
+        {
+            ExportingExcel = false;
+        }
+    }
+
+    private async Task ExportToPdf()
+    {
+        try
+        {
+            ExportingPdf = true;
+            var pdfData = await ReportService.ExportStudentProgressToPdfAsync(StudentId, FromDate, ToDate);
+            var fileName = $"تقرير_تقدم_الطالب_{Report?.Student.FullNameArabic}_{DateTime.Now:yyyyMMdd}.pdf";
+            await DownloadFile(pdfData, fileName, "application/pdf");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"خطأ في تصدير ملف PDF: {ex.Message}");
+        }
+        finally
+        {
+            ExportingPdf = false;
+        }
+    }
+
+    private async Task DownloadFile(byte[] data, string fileName, string mimeType)
+    {
+        var base64String = Convert.ToBase64String(data);
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, mimeType, base64String);
+    }
+
+    private string GetSurahName(int surahNumber)
+    {
+        var surah = Surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
+        return surah?.SurahNameArabic ?? $"سورة {surahNumber}";
+    }
+
+    private void BackToDashboard()
+    {
+        if (IsAdmin)
+        {
+            Navigation.NavigateTo("/admin/dashboard");
+        }
+        else
+        {
+            Navigation.NavigateTo("/teacher/dashboard");
+        }
+    }
+}

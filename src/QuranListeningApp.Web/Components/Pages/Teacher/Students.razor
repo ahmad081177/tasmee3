@@ -11,7 +11,7 @@
 
 <div class="page-container">
     <div class="page-header">
-        <button class="btn-back" @onclick="GoBack">← رجوع</button>
+        <button class="btn-back" @onclick="GoBack">← لوحة التحكم</button>
         <h2>طلابي</h2>
     </div>
 
@@ -35,27 +35,41 @@
                 var totalSessions = studentSessions.Count;
                 var passedSessions = studentSessions.Count(s => s.IsCompleted);
 
-                <div class="student-card" @onclick="@(() => ViewStudentSessions(student.Id))">
-                    <div class="student-header">
-                        <span class="student-name">@student.FullNameArabic</span>
-                        @if (!string.IsNullOrEmpty(student.GradeLevel))
-                        {
-                            <span class="grade-badge">@student.GradeLevel</span>
-                        }
+                <div class="student-card">
+                    <div class="student-info" @onclick="@(() => ViewStudentSessions(student.Id))">
+                        <div class="student-header">
+                            <span class="student-name">@student.FullNameArabic</span>
+                            @if (!string.IsNullOrEmpty(student.GradeLevel))
+                            {
+                                <span class="grade-badge">@student.GradeLevel</span>
+                            }
+                        </div>
+                        <div class="student-stats">
+                            <div class="stat">
+                                <span class="stat-label">الجلسات:</span>
+                                <span class="stat-value">@totalSessions</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">اجتاز:</span>
+                                <span class="stat-value success">@passedSessions</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">لم يجتز:</span>
+                                <span class="stat-value error">@(totalSessions - passedSessions)</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="student-stats">
-                        <div class="stat">
-                            <span class="stat-label">الجلسات:</span>
-                            <span class="stat-value">@totalSessions</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">اجتاز:</span>
-                            <span class="stat-value success">@passedSessions</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">لم يجتز:</span>
-                            <span class="stat-value error">@(totalSessions - passedSessions)</span>
-                        </div>
+                    <div class="student-actions" @onclick:stopPropagation="true">
+                        <button class="btn btn-sm btn-outline-info me-2" 
+                                @onclick="() => ViewStudentReport(student.Id)" 
+                                title="عرض تقرير التقدم">
+                            <i class="fas fa-chart-line"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" 
+                                @onclick="() => AddSessionForStudent(student.Id)" 
+                                title="إضافة جلسة جديدة">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                 </div>
             }
@@ -226,6 +240,16 @@
     {
         // Future: Navigate to student-specific sessions page
         Navigation.NavigateTo("/teacher/sessions");
+    }
+
+    private void ViewStudentReport(Guid studentId)
+    {
+        Navigation.NavigateTo($"/teacher/reports/student/{studentId}");
+    }
+
+    private void AddSessionForStudent(Guid studentId)
+    {
+        Navigation.NavigateTo($"/teacher/session/new/{studentId}");
     }
 
     private void GoBack() => Navigation.NavigateTo("/teacher/dashboard");

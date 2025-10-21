@@ -1,5 +1,6 @@
 @page "/admin"
 @page "/admin/dashboard"
+@layout AdminLayout
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using QuranListeningApp.Application.Services
@@ -70,7 +71,7 @@
                 <button class="btn btn-success" @onclick='() => Navigation.NavigateTo("/admin/sessions")'>
                     <span>📚</span> إدارة الجلسات
                 </button>
-                <button class="btn btn-info" @onclick="NavigateToReports">
+                <button class="btn btn-info" @onclick='() => Navigation.NavigateTo("/admin/reports")'>
                     <span>📊</span> التقارير
                 </button>
                 <button class="btn btn-warning" @onclick="NavigateToSettings">
@@ -292,6 +293,5 @@
 
     private void NavigateToUsers() => Navigation.NavigateTo("/admin/users");
     private void NavigateToSessions() => Navigation.NavigateTo("/admin/sessions");
-    private void NavigateToReports() => Navigation.NavigateTo("/admin/reports");
     private void NavigateToSettings() => Navigation.NavigateTo("/admin/settings");
 }

@@ -1,0 +1,57 @@
+@inherits LayoutComponentBase
+
+<div class="page-minimal">
+    <main class="main-content">
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    حدث خطأ غير متوقع.
+    <a href="" class="reload">إعادة تحميل</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+<style>
+    .page-minimal {
+        direction: rtl;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .main-content {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+    }
+
+    .content {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Override any global styles that might interfere */
+    .sidebar, .nav-scrollable, .navbar-toggler {
+        display: none !important;
+    }
+
+    /* Responsive design */
+    @@media (max-width: 768px) {
+        .main-content {
+            max-width: 90%;
+            padding: 10px;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+    }
+</style>

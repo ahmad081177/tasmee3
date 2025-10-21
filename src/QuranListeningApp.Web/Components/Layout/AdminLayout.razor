@@ -1,0 +1,227 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="page admin-layout">
+    <main class="admin-main">
+        <div class="top-row admin-header">
+            <div class="container-fluid">
+                <nav class="navbar navbar-expand-lg admin-navbar">
+                    <a class="navbar-brand" href="/admin">
+                        <span class="navbar-brand-icon">⚙️</span>
+                        نظام إدارة السماع
+                    </a>
+                    
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav me-auto">
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/admin" Match="NavLinkMatch.All">
+                                    <span class="nav-icon">🏠</span> لوحة التحكم
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/admin/users">
+                                    <span class="nav-icon">👥</span> المستخدمون
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/admin/sessions">
+                                    <span class="nav-icon">📝</span> جلسات السماع
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/admin/reports">
+                                    <span class="nav-icon">📊</span> التقارير
+                                </NavLink>
+                            </li>
+                        </ul>
+                        
+                        <div class="navbar-nav">
+                            <div class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle user-info" href="#" role="button" data-bs-toggle="dropdown">
+                                    <AuthorizeView>
+                                        <Authorized>
+                                            <span class="welcome-text">@(context.User.Identity?.Name ?? "المسؤول")</span>
+                                            <span class="role-badge admin-badge">مسؤول</span>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="/logout">🚪 تسجيل الخروج</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <article class="content px-4 admin-content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    حدث خطأ غير متوقع.
+    <a href="" class="reload">إعادة تحميل</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+<style>
+    .admin-layout {
+        direction: rtl;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+    }
+
+    .admin-navbar {
+        background: linear-gradient(135deg, #1565C0 0%, #1976D2 100%);
+        padding: 8px 0;
+    }
+
+    .admin-header {
+        background: linear-gradient(135deg, #1565C0 0%, #1976D2 100%);
+        border-bottom: 2px solid #0D47A1;
+        padding: 0;
+    }
+
+    .navbar-brand {
+        color: #E3F2FD !important;
+        font-size: 1.2rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 2rem;
+    }
+
+    .navbar-brand-icon {
+        font-size: 1.5rem;
+    }
+
+    .navbar-nav .nav-link {
+        color: #E3F2FD !important;
+        padding: 8px 16px;
+        margin: 0 4px;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .navbar-nav .nav-link:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #FFFFFF !important;
+    }
+
+    .navbar-nav .nav-link.active {
+        background: rgba(255, 255, 255, 0.2);
+        color: #FFFFFF !important;
+        font-weight: 600;
+    }
+
+    .nav-icon {
+        font-size: 1rem;
+        width: 18px;
+        text-align: center;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #E3F2FD;
+        cursor: pointer;
+        padding: 8px 16px;
+        border-radius: 6px;
+        transition: background 0.3s ease;
+    }
+
+    .user-info:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .welcome-text {
+        font-size: 0.9rem;
+        color: #E3F2FD;
+        font-weight: 500;
+    }
+
+    .role-badge {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .admin-badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: #E3F2FD;
+    }
+
+    .admin-content {
+        background: #FAFAFA;
+        min-height: calc(100vh - 80px);
+        padding: 24px;
+    }
+
+    .admin-main {
+        flex: 1;
+    }
+
+    .navbar-toggler {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+
+    .dropdown-menu {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        direction: rtl;
+    }
+
+    .dropdown-item {
+        color: #495057;
+        padding: 8px 16px;
+        transition: background 0.3s ease;
+    }
+
+    .dropdown-item:hover {
+        background: #f8f9fa;
+        color: #1565C0;
+    }
+
+    /* Responsive design */
+    @@media (max-width: 768px) {
+        .navbar-brand {
+            margin-left: 0;
+        }
+        
+        .user-info {
+            justify-content: center;
+            margin: 8px 0;
+        }
+        
+        .navbar-nav {
+            text-align: center;
+        }
+        
+        .navbar-nav .nav-link {
+            justify-content: center;
+        }
+    }
+</style>

@@ -1,4 +1,6 @@
 @page "/teacher/sessions/add"
+@page "/teacher/sessions/new"
+@layout TeacherLayout
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using QuranListeningApp.Application.Services
@@ -16,7 +18,7 @@
 
 <div class="add-session-container">
     <div class="header">
-        <button class="btn-back" @onclick="GoBack">←</button>
+        <button class="btn-back" @onclick="GoBack">← جلسات السماع</button>
         <h3>تسجيل جلسة سماع</h3>
         <div></div>
     </div>

@@ -14,7 +14,10 @@
 
 <div class="sessions-container">
     <div class="page-header">
-        <h3>جلسات السماع</h3>
+        <div class="header-left">
+            <button class="btn-back" @onclick="BackToDashboard">← لوحة التحكم</button>
+            <h3>جلسات السماع</h3>
+        </div>
         <button class="btn-add" @onclick="AddSession">+ جلسة</button>
     </div>
 
@@ -96,6 +99,27 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .btn-back {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s;
+    }
+
+    .btn-back:hover {
+        background: #5a6268;
     }
 
     .page-header h3 {
@@ -259,5 +283,6 @@
 
     private void AddSession() => Navigation.NavigateTo("/teacher/sessions/add");
     private void ViewSession(Guid id) => Navigation.NavigateTo($"/teacher/sessions/view/{id}");
+    private void BackToDashboard() => Navigation.NavigateTo("/teacher");
 }
 }
