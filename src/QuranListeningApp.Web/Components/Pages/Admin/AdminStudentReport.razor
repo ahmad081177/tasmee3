@@ -1,6 +1,7 @@
 @page "/admin/reports/student/{studentId:guid}"
 @layout AdminLayout
 @rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @using QuranListeningApp.Web.Components.Pages.Reports
 
 <StudentProgressReportContent StudentId="@StudentId" />

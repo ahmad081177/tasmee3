@@ -119,33 +119,6 @@
         margin-bottom: 40px;
     }
 
-    /* Mobile optimization */
-    @@media (max-width: 768px) {
-        .dashboard-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            padding: 16px;
-            gap: 12px;
-        }
-        
-        .stat-icon {
-            font-size: 32px;
-        }
-        
-        .stat-content h3 {
-            font-size: 24px;
-        }
-        
-        .stat-content p {
-            font-size: 14px;
-        }
-    }
-
     .stat-card {
         background: white;
         border-radius: 12px;
@@ -177,6 +150,93 @@
         font-size: 16px;
         color: #666;
         margin: 5px 0 0 0;
+    }
+
+    /* Mobile optimization - Ultra Compact view */
+    @@media (max-width: 768px) {
+        .admin-container {
+            padding: 10px;
+        }
+
+        .admin-header {
+            margin-bottom: 12px;
+        }
+
+        .admin-header h1 {
+            font-size: 18px;
+            margin-bottom: 3px;
+        }
+
+        .admin-header p {
+            font-size: 12px;
+        }
+
+        .dashboard-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-card {
+            padding: 8px 10px;
+            gap: 8px;
+            flex-direction: row;
+            text-align: right;
+            min-height: auto;
+        }
+        
+        .stat-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .stat-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            min-width: 0;
+        }
+        
+        .stat-content h3 {
+            font-size: 18px;
+            line-height: 1;
+            margin: 0;
+        }
+        
+        .stat-content p {
+            font-size: 11px;
+            margin: 2px 0 0 0;
+            white-space: nowrap;
+        }
+
+        .quick-actions {
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .quick-actions h2 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .action-buttons {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            font-size: 14px;
+        }
+
+        .recent-activity {
+            padding: 15px;
+        }
+
+        .recent-activity h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
     }
 
     .stat-card-admin {

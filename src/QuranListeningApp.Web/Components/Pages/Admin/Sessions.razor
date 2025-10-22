@@ -4,7 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Enums
-@attribute [Authorize(Roles = "Admin,Teacher")]
+@attribute [Authorize(Roles = "Admin")]
 @inject ListeningSessionService SessionService
 @inject UserService UserService
 @inject NavigationManager Navigation

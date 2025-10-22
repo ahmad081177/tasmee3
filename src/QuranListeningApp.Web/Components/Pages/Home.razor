@@ -1,10 +1,37 @@
 ﻿@page "/"
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Redirect to login page
-        Navigation.NavigateTo("/login", true);
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            // Unauthenticated → go to login
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        // Authenticated → role-based landing redirect
+        if (user.IsInRole("Admin"))
+        {
+            Navigation.NavigateTo("/admin/dashboard");
+        }
+        else if (user.IsInRole("Teacher"))
+        {
+            Navigation.NavigateTo("/teacher/dashboard");
+        }
+        else if (user.IsInRole("Student"))
+        {
+            Navigation.NavigateTo("/student/dashboard");
+        }
+        else
+        {
+            // Unknown role → send to login to avoid stuck state
+            Navigation.NavigateTo("/login");
+        }
     }
 }

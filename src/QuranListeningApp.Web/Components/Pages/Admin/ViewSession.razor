@@ -1,6 +1,7 @@
 @page "/admin/sessions/view/{id:guid}"
 @layout AdminLayout
 @rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
@@ -177,7 +178,7 @@
     .card-section {
         padding: 16px;
         border-bottom: 1px solid #f0f0f0;
-        text-align: end;
+        @* text-align: end; *@
     }
 
     .card-section:last-of-type {
@@ -195,7 +196,7 @@
         justify-content: space-between;
         align-items: center;
         padding: 8px 0;
-        flex-direction: row-reverse;
+        @* flex-direction: row-reverse; *@
     }
 
     .info-row .label {
@@ -399,3 +400,4 @@
         Navigation.NavigateTo("/admin/sessions");
     }
 }
+

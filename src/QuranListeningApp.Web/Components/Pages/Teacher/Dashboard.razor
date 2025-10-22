@@ -2,6 +2,7 @@
 @page "/teacher/dashboard"
 @layout TeacherLayout
 @rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Teacher")]
 @using QuranListeningApp.Application.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ListeningSessionService SessionService

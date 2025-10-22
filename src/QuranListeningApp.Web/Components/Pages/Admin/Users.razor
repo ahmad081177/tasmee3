@@ -31,6 +31,22 @@
         </button>
     </div>
 
+    @* Sub-tabs for students to filter by active/inactive status *@
+    @if (activeRole == UserRole.Student)
+    {
+        <div class="filter-subtabs">
+            <button class="subtab @(activeStatusFilter == null ? "active" : "")" @onclick="() => FilterByStatus(null)">
+                جميع الطلاب (@studentCount)
+            </button>
+            <button class="subtab @(activeStatusFilter == true ? "active" : "")" @onclick="() => FilterByStatus(true)">
+                الطلاب النشطون (@activeStudentCount)
+            </button>
+            <button class="subtab @(activeStatusFilter == false ? "active" : "")" @onclick="() => FilterByStatus(false)">
+                الطلاب غير النشطين (@inactiveStudentCount)
+            </button>
+        </div>
+    }
+
     @if (isLoading)
     {
         <div class="loading">جاري التحميل...</div>
@@ -162,6 +178,36 @@
         color: white;
     }
 
+    .filter-subtabs {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        margin-bottom: 16px;
+        padding: 0 4px;
+    }
+
+    .subtab {
+        padding: 6px 12px;
+        border: none;
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        white-space: nowrap;
+        color: #666;
+        border: 1px solid #e0e0e0;
+    }
+
+    .subtab.active {
+        background: #e3f2fd;
+        color: #1976d2;
+        border-color: #1976d2;
+    }
+
+    .subtab:hover:not(.active) {
+        background: #f0f0f0;
+    }
+
     .loading {
         text-align: center;
         padding: 40px;
@@ -266,10 +312,13 @@
     private List<Domain.Entities.User> allUsers = new();
     private List<Domain.Entities.User> filteredUsers = new();
     private UserRole? activeRole = null;
+    private bool? activeStatusFilter = null; // null = all, true = active only, false = inactive only
     private bool isLoading = true;
     private int totalCount = 0;
     private int teacherCount = 0;
     private int studentCount = 0;
+    private int activeStudentCount = 0;
+    private int inactiveStudentCount = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -284,6 +333,8 @@
         totalCount = allUsers.Count;
         teacherCount = allUsers.Count(u => u.Role == UserRole.Teacher);
         studentCount = allUsers.Count(u => u.Role == UserRole.Student);
+        activeStudentCount = allUsers.Count(u => u.Role == UserRole.Student && u.IsActive);
+        inactiveStudentCount = allUsers.Count(u => u.Role == UserRole.Student && !u.IsActive);
         FilterByRole(activeRole);
         isLoading = false;
     }
@@ -291,9 +342,33 @@
     private void FilterByRole(UserRole? role)
     {
         activeRole = role;
-        filteredUsers = role.HasValue 
-            ? allUsers.Where(u => u.Role == role.Value).ToList()
-            : allUsers;
+        activeStatusFilter = null; // Reset status filter when changing role
+        ApplyFilters();
+    }
+
+    private void FilterByStatus(bool? isActive)
+    {
+        activeStatusFilter = isActive;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var query = allUsers.AsEnumerable();
+
+        // Filter by role
+        if (activeRole.HasValue)
+        {
+            query = query.Where(u => u.Role == activeRole.Value);
+        }
+
+        // Filter by active status (only applies when viewing students)
+        if (activeRole == UserRole.Student && activeStatusFilter.HasValue)
+        {
+            query = query.Where(u => u.IsActive == activeStatusFilter.Value);
+        }
+
+        filteredUsers = query.ToList();
     }
 
     private string GetRoleText(UserRole role) => role switch

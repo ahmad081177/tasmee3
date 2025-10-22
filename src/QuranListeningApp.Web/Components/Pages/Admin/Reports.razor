@@ -1,5 +1,7 @@
 @page "/admin/reports"
 @layout AdminLayout
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @using QuranListeningApp.Domain.Interfaces
 @using QuranListeningApp.Domain.Entities
 @using QuranListeningApp.Domain.Enums
@@ -215,7 +217,7 @@ else
         try
         {
             var allUsers = await UserRepository.GetAllAsync();
-            students = allUsers.Where(u => u.Role == UserRole.Student).ToList();
+            students = allUsers.Where(u => u.Role == UserRole.Student && u.IsActive).ToList();
         }
         catch (Exception ex)
         {

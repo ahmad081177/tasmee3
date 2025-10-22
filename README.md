@@ -46,7 +46,7 @@ QuranListeningApp/
 
 ```bash
 git clone <repository-url>
-cd qurann/src
+cd tasmee3/src
 ```
 
 ### 2. Restore NuGet Packages

@@ -6,7 +6,7 @@
 @using QuranListeningApp.Domain.Enums
 @using QuranListeningApp.Domain.Interfaces
 @using System.Security.Claims
-@attribute [Authorize(Roles = "Admin,Teacher")]
+@attribute [Authorize(Roles = "Admin")]
 @inject ListeningSessionService SessionService
 @inject UserService UserService
 @inject ISurahReferenceRepository SurahRepository
@@ -274,7 +274,7 @@
     private async Task LoadData()
     {
         var allUsers = await UserService.GetAllUsersAsync();
-        students = allUsers.Where(u => u.Role == UserRole.Student).OrderBy(u => u.FullNameArabic).ToList();
+        students = allUsers.Where(u => u.Role == UserRole.Student && u.IsActive).OrderBy(u => u.FullNameArabic).ToList();
         teachers = allUsers.Where(u => u.Role == UserRole.Teacher).OrderBy(u => u.FullNameArabic).ToList();
         
         var allSurahs = await SurahRepository.GetAllAsync();

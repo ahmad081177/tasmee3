@@ -4,14 +4,24 @@
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
 
+<p>Logging out...</p>
+
 @code {
     protected override async Task OnInitializedAsync()
     {
         var httpContext = HttpContextAccessor.HttpContext;
         if (httpContext != null)
         {
+            // Clear the authentication cookie
             await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            
+            // Set cache control headers to prevent back button access
+            httpContext.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private";
+            httpContext.Response.Headers["Pragma"] = "no-cache";
+            httpContext.Response.Headers["Expires"] = "-1";
         }
-        Navigation.NavigateTo("/login", true);
+        
+        // Force reload to clear Blazor Server circuit and cached state
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 }

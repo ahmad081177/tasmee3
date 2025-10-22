@@ -1,6 +1,7 @@
 @page "/teacher/sessions/edit/{id:guid}"
 @layout TeacherLayout
 @rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Teacher")]
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
@@ -267,7 +268,7 @@
         currentTeacherId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
         
         var allUsers = await UserService.GetAllUsersAsync();
-        students = allUsers.Where(u => u.Role == Domain.Enums.UserRole.Student).OrderBy(u => u.FullNameArabic).ToList();
+        students = allUsers.Where(u => u.Role == Domain.Enums.UserRole.Student && u.IsActive).OrderBy(u => u.FullNameArabic).ToList();
         surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
         
         await LoadSession();

@@ -207,13 +207,31 @@
 
     /* Responsive design */
     @@media (max-width: 768px) {
+        .teacher-content {
+            padding: 15px;
+        }
+
         .navbar-brand {
             margin-left: 0;
+            font-size: 1rem;
+        }
+
+        .navbar-brand-icon {
+            font-size: 1.2rem;
         }
         
         .user-info {
             justify-content: center;
             margin: 8px 0;
+        }
+
+        .welcome-text {
+            font-size: 0.8rem;
+        }
+
+        .role-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
         }
         
         .navbar-nav {
@@ -222,6 +240,15 @@
         
         .navbar-nav .nav-link {
             justify-content: center;
+            padding: 10px 16px;
+        }
+
+        .navbar-collapse {
+            padding-top: 10px;
+        }
+
+        .navbar-collapse.show {
+            display: block;
         }
     }
 </style>
@@ -231,6 +258,8 @@
 
     private void ToggleNavbar()
     {
+        Console.WriteLine($"[TeacherLayout] Navbar toggled - isNavbarCollapsed was: {isNavbarCollapsed}");
         isNavbarCollapsed = !isNavbarCollapsed;
+        Console.WriteLine($"[TeacherLayout] Navbar toggled - isNavbarCollapsed now: {isNavbarCollapsed}");
     }
 }

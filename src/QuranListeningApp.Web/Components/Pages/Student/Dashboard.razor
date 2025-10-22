@@ -1,5 +1,6 @@
 @page "/student/dashboard"
 @rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Student")]
 @using QuranListeningApp.Application.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ListeningSessionService SessionService

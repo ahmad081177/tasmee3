@@ -1,5 +1,6 @@
 @page "/teacher/sessions/add"
 @page "/teacher/sessions/new"
+@page "/teacher/sessions/new/{studentId:guid}"
 @layout TeacherLayout
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
@@ -237,6 +238,8 @@
 </style>
 
 @code {
+    [Parameter] public Guid? StudentId { get; set; }
+    
     private List<Domain.Entities.User> students = new();
     private List<Domain.Entities.SurahReference> surahs = new();
     
@@ -257,12 +260,28 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
+        
+        // Pre-select student if coming from student list
+        if (StudentId.HasValue)
+        {
+            // Verify the student exists and is active
+            var preSelectedStudent = students.FirstOrDefault(s => s.Id == StudentId.Value);
+            if (preSelectedStudent != null)
+            {
+                selectedStudentId = StudentId.Value;
+            }
+            else
+            {
+                // Student not found or inactive - redirect to regular add session
+                Navigation.NavigateTo("/teacher/sessions/new");
+            }
+        }
     }
 
     private async Task LoadData()
     {
         var allUsers = await UserService.GetAllUsersAsync();
-        students = allUsers.Where(u => u.Role == UserRole.Student).OrderBy(u => u.FullNameArabic).ToList();
+        students = allUsers.Where(u => u.Role == UserRole.Student && u.IsActive).OrderBy(u => u.FullNameArabic).ToList();
         
         var allSurahs = await SurahRepository.GetAllAsync();
         surahs = allSurahs.OrderBy(s => s.SurahNumber).ToList();
