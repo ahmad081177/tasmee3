@@ -15,11 +15,11 @@
                         نظام سماع القرآن
                     </a>
                     
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavTeacher">
+                    <button class="navbar-toggler" type="button" @onclick="ToggleNavbar">
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     
-                    <div class="collapse navbar-collapse" id="navbarNavTeacher">
+                    <div class="collapse navbar-collapse @(isNavbarCollapsed ? "" : "show")" id="navbarNavTeacher">
                         <ul class="navbar-nav me-auto">
                             <li class="nav-item">
                                 <NavLink class="nav-link" href="/teacher" Match="NavLinkMatch.All">
@@ -225,3 +225,12 @@
         }
     }
 </style>
+
+@code {
+    private bool isNavbarCollapsed = true;
+
+    private void ToggleNavbar()
+    {
+        isNavbarCollapsed = !isNavbarCollapsed;
+    }
+}

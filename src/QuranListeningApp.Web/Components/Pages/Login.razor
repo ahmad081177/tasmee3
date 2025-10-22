@@ -78,8 +78,24 @@
         box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         padding: 40px;
         width: 100%;
-        max-width: 450px;
+        max-width: 500px;
         margin: 20px;
+    }
+
+    /* Desktop-specific styling */
+    @@media (min-width: 769px) {
+        .login-card {
+            max-width: 600px;
+            padding: 50px;
+        }
+    }
+
+    /* Large desktop styling */
+    @@media (min-width: 1200px) {
+        .login-card {
+            max-width: 700px;
+            padding: 60px;
+        }
     }
 
     .login-header {

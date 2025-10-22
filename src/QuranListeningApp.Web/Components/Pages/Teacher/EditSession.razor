@@ -1,4 +1,5 @@
 @page "/teacher/sessions/edit/{id:guid}"
+@layout TeacherLayout
 @rendermode InteractiveServer
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Interfaces
@@ -23,29 +24,46 @@
     {
         <div class="error-message">الجلسة غير موجودة</div>
     }
+    else if (!CanEditSession())
+    {
+        <div class="error-message">
+            ⚠️ غير مصرح لك بتعديل هذه الجلسة - ليست من جلساتك
+            <br />
+            <button class="btn-cancel" @onclick="GoBack" style="margin-top: 10px;">العودة</button>
+        </div>
+    }
     else
     {
         <div class="form-card">
-            <div class="form-group">
-                <label>الطالب</label>
-                <select @bind="studentId" class="form-control">
-                    <option value="">اختر الطالب</option>
-                    @foreach (var student in students)
-                    {
-                        <option value="@student.Id">@student.FullNameArabic</option>
-                    }
-                </select>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الطالب</label>
+                    <select @bind="studentId" class="form-control">
+                        <option value="">اختر الطالب</option>
+                        @foreach (var student in students)
+                        {
+                            <option value="@student.Id">@student.FullNameArabic</option>
+                        }
+                    </select>
+                </div>
+                @* Can add grade field later if needed *@
             </div>
 
-            <div class="form-group">
-                <label>السورة</label>
-                <select @bind="surahNumber" @bind:after="OnSurahChanged" class="form-control">
-                    <option value="0">اختر السورة</option>
-                    @foreach (var surah in surahs)
-                    {
-                        <option value="@surah.SurahNumber">@surah.SurahNameArabic</option>
-                    }
-                </select>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>السورة</label>
+                    <select @bind="surahNumber" @bind:after="OnSurahChanged" class="form-control">
+                        <option value="0">اختر السورة</option>
+                        @foreach (var surah in surahs)
+                        {
+                            <option value="@surah.SurahNumber">@surah.SurahNameArabic</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>تاريخ الجلسة</label>
+                    <input type="date" @bind="sessionDate" class="form-control" />
+                </div>
             </div>
 
             <div class="form-row">
@@ -78,13 +96,8 @@
             </div>
 
             <div class="form-group">
-                <label>تاريخ الجلسة</label>
-                <input type="date" @bind="sessionDate" class="form-control" />
-            </div>
-
-            <div class="form-group">
                 <label>ملاحظات</label>
-                <textarea @bind="notes" rows="4" class="form-control" placeholder="أضف ملاحظات (اختياري)"></textarea>
+                <textarea @bind="notes" rows="3" class="form-control" placeholder="أضف ملاحظات (اختياري)"></textarea>
             </div>
 
             @if (!string.IsNullOrEmpty(errorMessage))
@@ -246,14 +259,23 @@
     private DateTime sessionDate = DateTime.Today;
     private string notes = string.Empty;
     private int maxAyah = 286;
+    private Guid currentTeacherId;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentTeacherId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        
         var allUsers = await UserService.GetAllUsersAsync();
         students = allUsers.Where(u => u.Role == Domain.Enums.UserRole.Student).OrderBy(u => u.FullNameArabic).ToList();
         surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
         
         await LoadSession();
+    }
+
+    private bool CanEditSession()
+    {
+        return session != null && session.TeacherUserId == currentTeacherId;
     }
 
     private async Task LoadSession()
@@ -294,6 +316,13 @@
     {
         errorMessage = string.Empty;
 
+        // First check authorization
+        if (!CanEditSession())
+        {
+            errorMessage = "غير مصرح لك بتعديل هذه الجلسة - ليست من جلساتك";
+            return;
+        }
+
         if (studentId == Guid.Empty)
         {
             errorMessage = "يرجى اختيار الطالب";
@@ -314,32 +343,26 @@
 
         try
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var currentUserId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+            // Update the existing session object instead of creating a new one
+            session!.StudentUserId = studentId;
+            session.TeacherUserId = currentTeacherId; // Use the stored teacher ID
+            session.SurahNumber = surahNumber;
+            session.FromAyahNumber = fromAyah;
+            session.ToAyahNumber = toAyah;
+            session.MajorErrorsCount = majorErrors;
+            session.MinorErrorsCount = minorErrors;
+            session.IsCompleted = isPassed;
+            session.SessionDate = sessionDate;
+            session.Notes = notes;
+            session.ModifiedDate = DateTime.UtcNow;
 
-            var updatedSession = new Domain.Entities.ListeningSession
-            {
-                Id = Id,
-                StudentUserId = studentId,
-                TeacherUserId = currentUserId,
-                SurahNumber = surahNumber,
-                FromAyahNumber = fromAyah,
-                ToAyahNumber = toAyah,
-                MajorErrorsCount = majorErrors,
-                MinorErrorsCount = minorErrors,
-                IsCompleted = isPassed,
-                SessionDate = sessionDate,
-                Notes = notes,
-                CreatedDate = session!.CreatedDate,
-                ModifiedDate = DateTime.UtcNow
-            };
-
-            await SessionService.UpdateSessionAsync(updatedSession, currentUserId);
+            await SessionService.UpdateSessionAsync(session, currentTeacherId);
             Navigation.NavigateTo($"/teacher/sessions/view/{Id}");
         }
-        catch
+        catch (Exception ex)
         {
-            errorMessage = "حدث خطأ أثناء التحديث";
+            errorMessage = $"حدث خطأ أثناء التحديث: {ex.Message}";
+            Console.WriteLine($"Update error: {ex}");
         }
     }
 

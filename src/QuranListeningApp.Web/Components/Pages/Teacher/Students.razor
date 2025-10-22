@@ -1,4 +1,5 @@
 @page "/teacher/students"
+@layout TeacherLayout
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using QuranListeningApp.Application.Services
@@ -249,7 +250,7 @@
 
     private void AddSessionForStudent(Guid studentId)
     {
-        Navigation.NavigateTo($"/teacher/session/new/{studentId}");
+        Navigation.NavigateTo($"/teacher/sessions/new/{studentId}");
     }
 
     private void GoBack() => Navigation.NavigateTo("/teacher/dashboard");

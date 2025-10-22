@@ -29,17 +29,19 @@
         <div class="session-card">
             <div class="card-section">
                 <h3>معلومات الطالب</h3>
-                <div class="info-row">
-                    <span class="label">اسم الطالب:</span>
-                    <span class="value">@session.Student?.FullNameArabic</span>
-                </div>
-                @if (!string.IsNullOrEmpty(session.Student?.GradeLevel))
-                {
+                <div class="compact-row">
                     <div class="info-row">
-                        <span class="label">الصف:</span>
-                        <span class="value">@session.Student.GradeLevel</span>
+                        <span class="label">اسم الطالب:</span>
+                        <span class="value">@session.Student?.FullNameArabic</span>
                     </div>
-                }
+                    @if (!string.IsNullOrEmpty(session.Student?.GradeLevel))
+                    {
+                        <div class="info-row">
+                            <span class="label">الصف:</span>
+                            <span class="value">@session.Student.GradeLevel</span>
+                        </div>
+                    }
+                </div>
             </div>
 
             <div class="card-section">
@@ -48,29 +50,29 @@
                     <span class="label">التاريخ:</span>
                     <span class="value">@session.SessionDate.ToString("yyyy-MM-dd")</span>
                 </div>
-                <div class="info-row">
-                    <span class="label">السورة:</span>
-                    <span class="value">@GetSurahName(session.SurahNumber)</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">من آية:</span>
-                    <span class="value">@session.FromAyahNumber</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">إلى آية:</span>
-                    <span class="value">@session.ToAyahNumber</span>
+                <div class="compact-row">
+                    <div class="info-row">
+                        <span class="label">السورة:</span>
+                        <span class="value">@GetSurahName(session.SurahNumber)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">الآيات:</span>
+                        <span class="value">@session.FromAyahNumber - @session.ToAyahNumber</span>
+                    </div>
                 </div>
             </div>
 
             <div class="card-section">
                 <h3>الأخطاء والنتيجة</h3>
-                <div class="info-row">
-                    <span class="label">اللحن الجلي:</span>
-                    <span class="value error-major">@session.MajorErrorsCount</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">اللحن الخفي:</span>
-                    <span class="value error-minor">@session.MinorErrorsCount</span>
+                <div class="compact-row">
+                    <div class="info-row">
+                        <span class="label">اللحن الجلي:</span>
+                        <span class="value error-major">@session.MajorErrorsCount</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">اللحن الخفي:</span>
+                        <span class="value error-minor">@session.MinorErrorsCount</span>
+                    </div>
                 </div>
                 <div class="info-row">
                     <span class="label">الحالة:</span>
@@ -129,6 +131,7 @@
         padding: 16px;
         max-width: 600px;
         margin: 0 auto;
+        direction: rtl;
     }
 
     .page-header {
@@ -333,6 +336,25 @@
         border-radius: 6px;
         cursor: pointer;
         font-weight: 600;
+    }
+
+    .compact-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .compact-row .info-row {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    /* Mobile responsiveness */
+    @@media (max-width: 768px) {
+        .compact-row {
+            flex-direction: column;
+            gap: 8px;
+        }
     }
 </style>
 

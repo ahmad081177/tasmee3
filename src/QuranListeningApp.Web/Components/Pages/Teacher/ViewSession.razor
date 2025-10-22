@@ -1,4 +1,5 @@
 @page "/teacher/sessions/view/{id:guid}"
+@layout TeacherLayout
 @rendermode InteractiveServer
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Interfaces
@@ -28,17 +29,19 @@
         <div class="session-card">
             <div class="card-section">
                 <h3>معلومات الطالب</h3>
-                <div class="info-row">
-                    <span class="label">اسم الطالب:</span>
-                    <span class="value">@session.Student?.FullNameArabic</span>
-                </div>
-                @if (!string.IsNullOrEmpty(session.Student?.GradeLevel))
-                {
+                <div class="compact-row">
                     <div class="info-row">
-                        <span class="label">الصف:</span>
-                        <span class="value">@session.Student.GradeLevel</span>
+                        <span class="label">اسم الطالب:</span>
+                        <span class="value">@session.Student?.FullNameArabic</span>
                     </div>
-                }
+                    @if (!string.IsNullOrEmpty(session.Student?.GradeLevel))
+                    {
+                        <div class="info-row">
+                            <span class="label">الصف:</span>
+                            <span class="value">@session.Student.GradeLevel</span>
+                        </div>
+                    }
+                </div>
             </div>
 
             <div class="card-section">
@@ -47,29 +50,29 @@
                     <span class="label">التاريخ:</span>
                     <span class="value">@session.SessionDate.ToString("yyyy-MM-dd")</span>
                 </div>
-                <div class="info-row">
-                    <span class="label">السورة:</span>
-                    <span class="value">@GetSurahName(session.SurahNumber)</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">من آية:</span>
-                    <span class="value">@session.FromAyahNumber</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">إلى آية:</span>
-                    <span class="value">@session.ToAyahNumber</span>
+                <div class="compact-row">
+                    <div class="info-row">
+                        <span class="label">السورة:</span>
+                        <span class="value">@GetSurahName(session.SurahNumber)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">الآيات:</span>
+                        <span class="value">@session.FromAyahNumber - @session.ToAyahNumber</span>
+                    </div>
                 </div>
             </div>
 
             <div class="card-section">
                 <h3>الأخطاء والنتيجة</h3>
-                <div class="info-row">
-                    <span class="label">اللحن الجلي:</span>
-                    <span class="value error-major">@session.MajorErrorsCount</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">اللحن الخفي:</span>
-                    <span class="value error-minor">@session.MinorErrorsCount</span>
+                <div class="compact-row">
+                    <div class="info-row">
+                        <span class="label">اللحن الجلي:</span>
+                        <span class="value error-major">@session.MajorErrorsCount</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">اللحن الخفي:</span>
+                        <span class="value error-minor">@session.MinorErrorsCount</span>
+                    </div>
                 </div>
                 <div class="info-row">
                     <span class="label">الحالة:</span>
@@ -102,8 +105,17 @@
             </div>
 
             <div class="action-buttons">
-                <button class="btn-edit" @onclick="EditSession">تعديل</button>
-                <button class="btn-delete" @onclick="ShowDeleteConfirm">حذف</button>
+                @if (CanEditSession())
+                {
+                    <button class="btn-edit" @onclick="EditSession">تعديل</button>
+                    <button class="btn-delete" @onclick="ShowDeleteConfirm">حذف</button>
+                }
+                else
+                {
+                    <div class="unauthorized-message">
+                        ⚠️ لا يمكنك تعديل أو حذف هذه الجلسة - ليست من جلساتك
+                    </div>
+                }
             </div>
         </div>
     }
@@ -333,6 +345,35 @@
         cursor: pointer;
         font-weight: 600;
     }
+
+    .compact-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .compact-row .info-row {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    /* Mobile responsiveness */
+    @@media (max-width: 768px) {
+        .compact-row {
+            flex-direction: column;
+            gap: 8px;
+        }
+    }
+
+    .unauthorized-message {
+        text-align: center;
+        padding: 16px;
+        background: #ffe6e6;
+        color: #d32f2f;
+        border-radius: 8px;
+        font-weight: 500;
+        border: 1px solid #ffcccc;
+    }
 </style>
 
 @code {
@@ -342,9 +383,13 @@
     private List<Domain.Entities.SurahReference> surahs = new();
     private bool isLoading = true;
     private bool showDeleteModal = false;
+    private Guid currentTeacherId;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentTeacherId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        
         await LoadSession();
         surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
     }
@@ -353,7 +398,19 @@
     {
         isLoading = true;
         session = await SessionService.GetSessionByIdAsync(Id);
+        
+        // Additional security check - if teacher doesn't own this session and it's not found, redirect
+        if (session != null && !CanEditSession())
+        {
+            // Still allow viewing but not editing
+        }
+        
         isLoading = false;
+    }
+
+    private bool CanEditSession()
+    {
+        return session != null && session.TeacherUserId == currentTeacherId;
     }
 
     private string GetSurahName(int surahNumber)
@@ -362,17 +419,33 @@
         return surah?.SurahNameArabic ?? surahNumber.ToString();
     }
 
-    private void EditSession() => Navigation.NavigateTo($"/teacher/sessions/edit/{Id}");
+    private void EditSession() 
+    {
+        if (CanEditSession())
+        {
+            Navigation.NavigateTo($"/teacher/sessions/edit/{Id}");
+        }
+    }
+    
     private void GoBack() => Navigation.NavigateTo("/teacher/sessions");
-    private void ShowDeleteConfirm() => showDeleteModal = true;
+    private void ShowDeleteConfirm() 
+    {
+        if (CanEditSession())
+        {
+            showDeleteModal = true;
+        }
+    }
+    
     private void HideDeleteConfirm() => showDeleteModal = false;
 
     private async Task DeleteSession()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var currentUserId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        if (!CanEditSession())
+        {
+            return; // Security check
+        }
         
-        await SessionService.DeleteSessionAsync(Id, currentUserId);
+        await SessionService.DeleteSessionAsync(Id, currentTeacherId);
         Navigation.NavigateTo("/teacher/sessions");
     }
 }

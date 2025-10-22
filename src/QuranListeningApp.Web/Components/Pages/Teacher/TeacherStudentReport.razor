@@ -1,0 +1,10 @@
+@page "/teacher/reports/student/{studentId:guid}"
+@layout TeacherLayout
+@rendermode InteractiveServer
+@using QuranListeningApp.Web.Components.Pages.Reports
+
+<StudentProgressReportContent StudentId="@StudentId" />
+
+@code {
+    [Parameter] public Guid StudentId { get; set; }
+}

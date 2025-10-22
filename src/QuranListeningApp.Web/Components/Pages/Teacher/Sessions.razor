@@ -1,4 +1,5 @@
 @page "/teacher/sessions"
+@layout TeacherLayout
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using QuranListeningApp.Application.Services
@@ -46,36 +47,34 @@
                     <div class="session-details">
                         <div class="detail-row">
                             <span class="label">السورة:</span>
-                            <span class="value">@session.SurahNumber</span>
+                            <span class="value">@session.SurahNumber | من آية: @session.FromAyahNumber - @session.ToAyahNumber</span>
                         </div>
-                        <div class="detail-row">
-                            <span class="label">من آية:</span>
-                            <span class="value">@session.FromAyahNumber - @session.ToAyahNumber</span>
-                        </div>
-                        @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0)
+                        @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0 || session.IsCompleted)
                         {
                             <div class="detail-row">
-                                <span class="label">الأخطاء:</span>
-                                <span class="value error-count">
-                                    @if (session.MajorErrorsCount > 0)
+                                <div class="errors-status">
+                                    @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0)
                                     {
-                                        <span>جلي: @session.MajorErrorsCount</span>
+                                        <span class="error-count">
+                                            @if (session.MajorErrorsCount > 0)
+                                            {
+                                                <span>جلي: @session.MajorErrorsCount</span>
+                                            }
+                                            @if (session.MinorErrorsCount > 0)
+                                            {
+                                                @if (session.MajorErrorsCount > 0)
+                                                {
+                                                    <span> | </span>
+                                                }
+                                                <span>خفي: @session.MinorErrorsCount</span>
+                                            }
+                                        </span>
                                     }
-                                    @if (session.MinorErrorsCount > 0)
+                                    @if (session.IsCompleted)
                                     {
-                                        @if (session.MajorErrorsCount > 0)
-                                        {
-                                            <span> | </span>
-                                        }
-                                        <span>خفي: @session.MinorErrorsCount</span>
+                                        <span class="badge-passed">✓ اجتاز</span>
                                     }
-                                </span>
-                            </div>
-                        }
-                        @if (session.IsCompleted)
-                        {
-                            <div class="detail-row">
-                                <span class="badge-passed">✓ اجتاز</span>
+                                </div>
                             </div>
                         }
                     </div>
@@ -258,6 +257,22 @@
     .teacher-name {
         font-size: 12px;
         color: #667eea;
+    }
+
+    .errors-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .errors-status .error-count {
+        flex: 1;
+    }
+
+    .errors-status .badge-passed {
+        flex-shrink: 0;
     }
 </style>
 
