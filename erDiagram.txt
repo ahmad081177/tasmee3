@@ -1,0 +1,72 @@
+erDiagram
+    Users ||--o{ Users : "CreatedByUser (self-ref)"
+    Users ||--o{ ListeningSessions_Student : "Student"
+    Users ||--o{ ListeningSessions_Teacher : "Teacher"
+    Users ||--o{ AuditLogs : "PerformedBy"
+    SurahReferences ||--o{ ListeningSessions : "References"
+
+    Users {
+        Guid Id PK
+        string Username UK "Max 50, Required"
+        string PasswordHash "Required"
+        string FullNameArabic "Max 200, Required"
+        string IdNumber "Max 20, Nullable"
+        string PhoneNumber "Max 20, Nullable"
+        string Email "Max 100, Nullable"
+        int Role "FK to UserRole enum"
+        string GradeLevel "Max 50, Nullable (Students only)"
+        bool IsActive "Default true"
+        DateTime CreatedDate "Default UTC Now"
+        DateTime ModifiedDate "Nullable"
+        Guid CreatedByUserId FK "Self-reference, Nullable"
+        DateTime LastLoginDate "Nullable"
+    }
+
+    ListeningSessions {
+        Guid Id PK
+        Guid StudentUserId FK "Required"
+        Guid TeacherUserId FK "Required"
+        DateTime SessionDate "Required, Default UTC Now"
+        int SurahNumber "Required, Range 1-114"
+        int FromAyahNumber "Required, Range 1-max"
+        int ToAyahNumber "Required, Range 1-max"
+        int MajorErrorsCount "Default 0, Range 0-max"
+        int MinorErrorsCount "Default 0, Range 0-max"
+        bool IsCompleted "Default false"
+        string Notes "Nullable, Arabic text"
+        DateTime CreatedDate "Default UTC Now"
+        DateTime ModifiedDate "Nullable"
+    }
+
+    SurahReferences {
+        int SurahNumber PK "Range 1-114"
+        string SurahNameArabic "Max 100, Required"
+        string SurahNameEnglish "Max 100, Nullable"
+        int TotalAyahs "Required, Range 1-286"
+        bool IsMakki "Makkah=true, Madinah=false"
+    }
+
+    AuditLogs {
+        Guid Id PK
+        Guid UserId FK "Required"
+        int Action "FK to AuditAction enum"
+        string EntityType "Max 100, Required"
+        Guid EntityId "Required"
+        string OldValues "JSON, Nullable"
+        string NewValues "JSON, Nullable"
+        DateTime Timestamp "Required, Default UTC Now"
+        string IpAddress "Max 45, Nullable (IPv6)"
+    }
+
+    UserRole {
+        int Value
+        string Name
+    }
+
+    AuditAction {
+        int Value
+        string Name
+    }
+
+    Users ||--o{ UserRole : "has"
+    AuditLogs ||--o{ AuditAction : "has"
