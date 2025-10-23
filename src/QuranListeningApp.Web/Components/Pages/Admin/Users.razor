@@ -31,6 +31,20 @@
         </button>
     </div>
 
+    @* Search box *@
+    <div class="search-box">
+        <input type="text" 
+               class="search-input" 
+               placeholder="بحث حسب الاسم، رقم الهوية، الصف، الهاتف، أو البريد الإلكتروني..." 
+               @bind="searchQuery"
+               @bind:event="oninput"
+               @bind:after="ApplyFilters" />
+        @if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            <button class="search-clear" @onclick="ClearSearch" title="مسح البحث">×</button>
+        }
+    </div>
+
     @* Sub-tabs for students to filter by active/inactive status *@
     @if (activeRole == UserRole.Student)
     {
@@ -178,6 +192,48 @@
         color: white;
     }
 
+    .search-box {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 10px 40px 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        direction: rtl;
+        transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .search-clear {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0;
+        transition: background-color 0.2s;
+    }
+
+    .search-clear:hover {
+        background: #5a6268;
+    }
+
     .filter-subtabs {
         display: flex;
         gap: 8px;
@@ -313,6 +369,7 @@
     private List<Domain.Entities.User> filteredUsers = new();
     private UserRole? activeRole = null;
     private bool? activeStatusFilter = null; // null = all, true = active only, false = inactive only
+    private string searchQuery = string.Empty;
     private bool isLoading = true;
     private int totalCount = 0;
     private int teacherCount = 0;
@@ -368,7 +425,27 @@
             query = query.Where(u => u.IsActive == activeStatusFilter.Value);
         }
 
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var search = searchQuery.Trim().ToLower();
+            query = query.Where(u => 
+                (u.FullNameArabic?.ToLower().Contains(search) ?? false) ||
+                (u.IdNumber?.ToLower().Contains(search) ?? false) ||
+                (u.PhoneNumber?.ToLower().Contains(search) ?? false) ||
+                (u.Email?.ToLower().Contains(search) ?? false) ||
+                (u.GradeLevel?.ToLower().Contains(search) ?? false) ||
+                (u.Username?.ToLower().Contains(search) ?? false)
+            );
+        }
+
         filteredUsers = query.ToList();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        ApplyFilters();
     }
 
     private string GetRoleText(UserRole role) => role switch

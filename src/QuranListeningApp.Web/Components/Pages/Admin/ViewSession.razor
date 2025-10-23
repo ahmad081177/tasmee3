@@ -350,11 +350,14 @@
         min-width: 120px;
     }
 
-    /* Mobile responsiveness */
+    /* Mobile responsiveness - Keep compact row layout on mobile too */
     @@media (max-width: 768px) {
         .compact-row {
-            flex-direction: column;
-            gap: 8px;
+            gap: 12px;
+        }
+
+        .compact-row .info-row {
+            min-width: 100px;
         }
     }
 </style>
