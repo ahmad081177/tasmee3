@@ -18,11 +18,34 @@ builder.Services.AddAntiforgery();
 // Add HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
-// Configure Database
+// Configure Database with Azure SQL retry policy
+var dbSettings = builder.Configuration.GetSection("DatabaseSettings");
+var isAzureSql = dbSettings.GetValue<bool>("IsAzureSql");
+var enableRetry = dbSettings.GetValue<bool>("EnableRetryOnFailure");
+var maxRetryCount = dbSettings.GetValue<int>("MaxRetryCount", 3);
+var maxRetryDelay = dbSettings.GetValue<int>("MaxRetryDelaySeconds", 2);
+var commandTimeout = dbSettings.GetValue<int>("CommandTimeoutSeconds", 30);
+
 builder.Services.AddDbContext<QuranAppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly("QuranListeningApp.Infrastructure")));
+        sqlOptions =>
+        {
+            sqlOptions.MigrationsAssembly("QuranListeningApp.Infrastructure");
+            
+            // Enable retry on failure for Azure SQL transient errors
+            if (enableRetry)
+            {
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: maxRetryCount,
+                    maxRetryDelay: TimeSpan.FromSeconds(maxRetryDelay),
+                    errorNumbersToAdd: new[] { 40197, 40501, 40613 } // Azure SQL cold start & transient errors
+                );
+            }
+            
+            // Set command timeout (higher for Azure SQL cold starts)
+            sqlOptions.CommandTimeout(commandTimeout);
+        }));
 
 // Register Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();

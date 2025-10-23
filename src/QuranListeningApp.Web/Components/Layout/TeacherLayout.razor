@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@using QuranListeningApp.Web.Components.Shared
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
@@ -69,6 +70,8 @@
             @Body
         </article>
     </main>
+    
+    <DatabaseLoadingIndicator />
 </div>
 
 <div id="blazor-error-ui">

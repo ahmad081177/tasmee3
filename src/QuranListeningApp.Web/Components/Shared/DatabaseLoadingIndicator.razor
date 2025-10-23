@@ -1,0 +1,113 @@
+@inject IJSRuntime JS
+
+<div class="database-loading-overlay @(IsLoading ? "show" : "")" id="dbLoadingOverlay">
+    <div class="database-loading-content">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">جاري التحميل...</span>
+        </div>
+        <h5 class="mt-3 text-primary">جاري الاتصال بقاعدة البيانات...</h5>
+        <p class="text-muted small">قد يستغرق هذا بضع ثوان في المرة الأولى...</p>
+    </div>
+</div>
+
+<style>
+    .database-loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(2px);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .database-loading-overlay.show {
+        display: flex;
+    }
+
+    .database-loading-content {
+        text-align: center;
+        animation: fadeIn 0.3s ease-in;
+        padding: 2rem;
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .database-loading-content .spinner-border {
+        border-width: 0.3rem;
+    }
+
+    .database-loading-content h5 {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .database-loading-content p {
+        margin-bottom: 0;
+        font-size: 0.875rem;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Controls the visibility of the loading indicator
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>
+    /// Optional custom message to display
+    /// </summary>
+    [Parameter]
+    public string? Message { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Add global event listener to show loading on page navigation
+            await JS.InvokeVoidAsync("eval", @"
+                window.dbLoadingShown = false;
+                
+                // Show loading indicator during navigation (Blazor Server)
+                if (window.Blazor && window.Blazor.defaultReconnectionHandler) {
+                    const originalShow = window.Blazor.defaultReconnectionHandler.onConnectionDown;
+                    window.Blazor.defaultReconnectionHandler.onConnectionDown = () => {
+                        const overlay = document.getElementById('dbLoadingOverlay');
+                        if (overlay && !overlay.classList.contains('show')) {
+                            overlay.classList.add('show');
+                            window.dbLoadingShown = true;
+                        }
+                        if (originalShow) originalShow();
+                    };
+                    
+                    const originalHide = window.Blazor.defaultReconnectionHandler.onConnectionUp;
+                    window.Blazor.defaultReconnectionHandler.onConnectionUp = () => {
+                        const overlay = document.getElementById('dbLoadingOverlay');
+                        if (overlay && overlay.classList.contains('show')) {
+                            overlay.classList.remove('show');
+                            window.dbLoadingShown = false;
+                        }
+                        if (originalHide) originalHide();
+                    };
+                }
+            ");
+        }
+    }
+}
