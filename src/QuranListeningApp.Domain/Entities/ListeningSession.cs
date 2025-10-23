@@ -88,6 +88,13 @@ public class ListeningSession
     public bool IsCompleted { get; set; } = false;
 
     /// <summary>
+    /// Numerical grade for this session (0-100)
+    /// Nullable to allow sessions without grades
+    /// </summary>
+    [Range(0, 100)]
+    public decimal? Grade { get; set; }
+
+    /// <summary>
     /// Teacher's observations and comments in Arabic
     /// </summary>
     public string? Notes { get; set; }

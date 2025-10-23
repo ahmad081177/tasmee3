@@ -1,0 +1,232 @@
+@page "/admin/profile"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@inject UserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<div class="container" style="max-width: 900px; margin: 40px auto; direction: rtl;">
+    <div class="card shadow-sm">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 class="mb-0">
+                <i class="bi bi-person-circle"></i> الملف الشخصي
+            </h3>
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="@(() => errorMessage = "")"></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="@(() => successMessage = "")"></button>
+                </div>
+            }
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">الاسم الكامل: <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" @bind="fullName" placeholder="أدخل الاسم الكامل" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">اسم المستخدم: <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" @bind="username" placeholder="أدخل اسم المستخدم" />
+                </div>
+
+                <div class="col-12">
+                    <hr />
+                    <h5 class="mb-3">
+                        <i class="bi bi-key"></i> تغيير كلمة المرور
+                        <small class="text-muted">(اختياري - اترك فارغاً للإبقاء على كلمة المرور الحالية)</small>
+                    </h5>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">كلمة المرور الحالية:</label>
+                    <input type="password" class="form-control" @bind="currentPassword" placeholder="كلمة المرور الحالية" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">كلمة المرور الجديدة:</label>
+                    <input type="password" class="form-control" @bind="newPassword" placeholder="كلمة المرور الجديدة" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">تأكيد كلمة المرور:</label>
+                    <input type="password" class="form-control" @bind="confirmPassword" placeholder="تأكيد كلمة المرور" />
+                </div>
+
+                <div class="col-12">
+                    <div class="form-text">
+                        <i class="bi bi-info-circle"></i> كلمة المرور يجب أن تكون 6 أحرف على الأقل
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-start mt-4">
+                <button class="btn btn-primary btn-lg" @onclick="SaveProfile" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-save"></i> حفظ التغييرات
+                </button>
+                
+                <a href="/admin/dashboard" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-right"></i> رجوع
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Guid currentUserId;
+    private string fullName = "";
+    private string username = "";
+    private string currentPassword = "";
+    private string newPassword = "";
+    private string confirmPassword = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUserId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        
+        await LoadUserData();
+    }
+
+    private async Task LoadUserData()
+    {
+        try
+        {
+            var user = await UserService.GetUserByIdAsync(currentUserId);
+            if (user != null)
+            {
+                fullName = user.FullNameArabic;
+                username = user.Username;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في تحميل بيانات المستخدم: {ex.Message}";
+        }
+    }
+
+    private async Task SaveProfile()
+    {
+        errorMessage = "";
+        successMessage = "";
+
+        // Validate basic info
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            errorMessage = "يجب إدخال الاسم الكامل";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            errorMessage = "يجب إدخال اسم المستخدم";
+            return;
+        }
+
+        if (username.Length < 3)
+        {
+            errorMessage = "اسم المستخدم يجب أن يكون 3 أحرف على الأقل";
+            return;
+        }
+
+        // Validate password change if requested
+        bool changePassword = !string.IsNullOrWhiteSpace(currentPassword) || 
+                             !string.IsNullOrWhiteSpace(newPassword) || 
+                             !string.IsNullOrWhiteSpace(confirmPassword);
+
+        if (changePassword)
+        {
+            if (string.IsNullOrWhiteSpace(currentPassword))
+            {
+                errorMessage = "يجب إدخال كلمة المرور الحالية";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newPassword))
+            {
+                errorMessage = "يجب إدخال كلمة المرور الجديدة";
+                return;
+            }
+
+            if (newPassword.Length < 6)
+            {
+                errorMessage = "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل";
+                return;
+            }
+
+            if (newPassword != confirmPassword)
+            {
+                errorMessage = "كلمة المرور الجديدة وتأكيد كلمة المرور غير متطابقين";
+                return;
+            }
+
+            // Verify current password
+            var isValid = await UserService.ValidatePasswordAsync(username, currentPassword);
+            if (!isValid)
+            {
+                errorMessage = "كلمة المرور الحالية غير صحيحة";
+                return;
+            }
+        }
+
+        try
+        {
+            isSaving = true;
+
+            var user = await UserService.GetUserByIdAsync(currentUserId);
+            if (user == null)
+            {
+                errorMessage = "لم يتم العثور على المستخدم";
+                return;
+            }
+
+            // Update basic info
+            user.FullNameArabic = fullName.Trim();
+            user.Username = username.Trim();
+
+            // Update password if requested
+            if (changePassword && !string.IsNullOrWhiteSpace(newPassword))
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            }
+
+            await UserService.UpdateUserAsync(user, currentUserId);
+
+            successMessage = "تم حفظ التغييرات بنجاح";
+            
+            // Clear password fields
+            currentPassword = "";
+            newPassword = "";
+            confirmPassword = "";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في حفظ التغييرات: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

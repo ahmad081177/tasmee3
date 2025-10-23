@@ -29,12 +29,14 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IListeningSessionRepository, ListeningSessionRepository>();
 builder.Services.AddScoped<ISurahReferenceRepository, SurahReferenceRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddScoped<IAppSettingsRepository, AppSettingsRepository>();
 
 // Register Services
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ListeningSessionService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<AppSettingsService>();
 
 // Configure Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

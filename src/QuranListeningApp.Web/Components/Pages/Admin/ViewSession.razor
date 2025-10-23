@@ -67,14 +67,21 @@
                 <h3>الأخطاء والنتيجة</h3>
                 <div class="compact-row">
                     <div class="info-row">
-                        <span class="label">اللحن الجلي:</span>
+                        <span class="label">لحن جلي:</span>
                         <span class="value error-major">@session.MajorErrorsCount</span>
                     </div>
                     <div class="info-row">
-                        <span class="label">اللحن الخفي:</span>
+                        <span class="label">لحن خفي:</span>
                         <span class="value error-minor">@session.MinorErrorsCount</span>
                     </div>
                 </div>
+                @if (session.Grade.HasValue)
+                {
+                    <div class="info-row">
+                        <span class="label">الدرجة:</span>
+                        <span class="value grade-value">@session.Grade.Value.ToString("F2")</span>
+                    </div>
+                }
                 <div class="info-row">
                     <span class="label">الحالة:</span>
                     <span class="value">

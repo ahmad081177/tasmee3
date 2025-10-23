@@ -8,6 +8,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using QuranListeningApp.Application.Services
 @inject AuthService AuthService
+@inject AppSettingsService SettingsService
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
 
@@ -16,7 +17,20 @@
 <div class="login-container">
     <div class="login-card">
         <div class="login-header">
-            <h2>تسجيل الدخول</h2>
+            @if (!string.IsNullOrEmpty(logoPath))
+            {
+                <div class="login-logo-container">
+                    <img src="/@logoPath" alt="شعار المدرسة" class="login-logo" />
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(schoolName))
+            {
+                <h2>@schoolName</h2>
+            }
+            else
+            {
+                <h2>تسجيل الدخول</h2>
+            }
             <p>نظام إدارة سماع القرآن الكريم</p>
         </div>
 
@@ -101,6 +115,16 @@
     .login-header {
         text-align: center;
         margin-bottom: 30px;
+    }
+
+    .login-logo-container {
+        margin-bottom: 20px;
+    }
+
+    .login-logo {
+        max-height: 100px;
+        max-width: 200px;
+        object-fit: contain;
     }
 
     .login-header h2 {
@@ -202,6 +226,21 @@
     private bool rememberMe = false;
     private string? errorMessage;
     private bool isLoading = false;
+    private string? logoPath;
+    private string schoolName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            logoPath = await SettingsService.GetLogoPathAsync();
+            schoolName = await SettingsService.GetSchoolNameAsync();
+        }
+        catch
+        {
+            // If settings fail to load, just don't display branding
+        }
+    }
 
     private async Task HandleLogin()
     {

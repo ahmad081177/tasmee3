@@ -19,6 +19,7 @@ public class QuranAppDbContext : DbContext
     public DbSet<ListeningSession> ListeningSessions { get; set; } = null!;
     public DbSet<SurahReference> SurahReferences { get; set; } = null!;
     public DbSet<AuditLog> AuditLogs { get; set; } = null!;
+    public DbSet<AppSettings> AppSettings { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -135,6 +136,9 @@ public class QuranAppDbContext : DbContext
             entity.Property(e => e.IsCompleted)
                 .HasDefaultValue(false);
 
+            entity.Property(e => e.Grade)
+                .HasPrecision(5, 2); // 999.99 (0-100 range, 2 decimal places)
+
             entity.Property(e => e.Notes)
                 .HasColumnType("nvarchar(max)"); // For long Arabic text
         });
@@ -197,6 +201,27 @@ public class QuranAppDbContext : DbContext
 
             entity.Property(e => e.IpAddress)
                 .HasMaxLength(45); // IPv6 max length
+        });
+
+        // Configure AppSettings entity
+        modelBuilder.Entity<AppSettings>(entity =>
+        {
+            entity.ToTable("AppSettings");
+            entity.HasKey(e => e.Id);
+
+            // Ensure single row table (Id = 1)
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever(); // Don't auto-generate, always use 1
+
+            entity.Property(e => e.SchoolNameArabic)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.SchoolLogoPath)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.PledgeText)
+                .HasColumnType("nvarchar(max)"); // For long Arabic text
         });
     }
 }

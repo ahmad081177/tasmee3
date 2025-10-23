@@ -1,0 +1,138 @@
+@page "/admin/settings/school-name"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using QuranListeningApp.Application.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AppSettingsService AppSettingsService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>إدارة اسم المدرسة</PageTitle>
+
+<div class="container" style="max-width: 800px; margin: 40px auto; direction: rtl;">
+    <div class="card shadow-sm">
+        <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+            <h3 class="mb-0">
+                <i class="bi bi-building"></i> إدارة اسم المدرسة
+            </h3>
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="@(() => errorMessage = "")"></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="@(() => successMessage = "")"></button>
+                </div>
+            }
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">اسم المدرسة:</label>
+                <input type="text" class="form-control form-control-lg" @bind="schoolName" 
+                       placeholder="أدخل اسم المدرسة..." 
+                       style="font-size: 1.2rem; font-family: 'Traditional Arabic', 'Arial', sans-serif;" />
+                <div class="form-text">
+                    <i class="bi bi-info-circle"></i> سيظهر هذا الاسم في جميع صفحات النظام والتقارير.
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(currentSchoolName))
+            {
+                <div class="alert alert-info">
+                    <strong>الاسم الحالي:</strong> @currentSchoolName
+                </div>
+            }
+
+            <div class="d-flex gap-2 justify-content-start">
+                <button class="btn btn-primary btn-lg" @onclick="SaveSchoolName" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-save"></i> حفظ الاسم
+                </button>
+                
+                <a href="/admin/settings" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-right"></i> رجوع
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string schoolName = "";
+    private string currentSchoolName = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSchoolName();
+    }
+
+    private async Task LoadSchoolName()
+    {
+        try
+        {
+            currentSchoolName = await AppSettingsService.GetSchoolNameAsync();
+            schoolName = currentSchoolName;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في تحميل اسم المدرسة: {ex.Message}";
+        }
+    }
+
+    private async Task SaveSchoolName()
+    {
+        errorMessage = "";
+        successMessage = "";
+
+        if (string.IsNullOrWhiteSpace(schoolName))
+        {
+            errorMessage = "يجب إدخال اسم المدرسة";
+            return;
+        }
+
+        if (schoolName.Length < 3)
+        {
+            errorMessage = "اسم المدرسة يجب أن يكون 3 أحرف على الأقل";
+            return;
+        }
+
+        if (schoolName.Length > 200)
+        {
+            errorMessage = "اسم المدرسة يجب أن لا يزيد عن 200 حرف";
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+            
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            await AppSettingsService.UpdateSchoolNameAsync(schoolName, userId);
+            
+            currentSchoolName = schoolName;
+            successMessage = "تم حفظ اسم المدرسة بنجاح";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في حفظ اسم المدرسة: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

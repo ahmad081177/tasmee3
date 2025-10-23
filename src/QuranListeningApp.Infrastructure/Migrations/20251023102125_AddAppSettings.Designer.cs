@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QuranListeningApp.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using QuranListeningApp.Infrastructure.Data;
 namespace QuranListeningApp.Infrastructure.Migrations
 {
     [DbContext(typeof(QuranAppDbContext))]
-    partial class QuranAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251023102125_AddAppSettings")]
+    partial class AddAppSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -32,9 +35,6 @@ namespace QuranListeningApp.Infrastructure.Migrations
 
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("PledgeText")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SchoolLogoPath")
                         .HasMaxLength(500)
@@ -235,9 +235,6 @@ namespace QuranListeningApp.Infrastructure.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime?>("PledgeAcceptedDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<int>("Role")
                         .HasColumnType("int");

@@ -95,6 +95,12 @@ public class User
     /// </summary>
     public DateTime? LastLoginDate { get; set; }
 
+    /// <summary>
+    /// Date when student accepted the pledge/covenant (الميثاق)
+    /// Only applicable for students, null if not accepted yet
+    /// </summary>
+    public DateTime? PledgeAcceptedDate { get; set; }
+
     // Navigation properties
 
     /// <summary>

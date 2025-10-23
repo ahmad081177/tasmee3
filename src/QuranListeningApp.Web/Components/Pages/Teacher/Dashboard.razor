@@ -4,9 +4,11 @@
 @rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Teacher")]
 @using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ListeningSessionService SessionService
 @inject UserService UserService
+@inject ISurahReferenceRepository SurahRepository
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -49,6 +51,10 @@
                 <span class="btn-icon">👥</span>
                 <span>طلابي</span>
             </button>
+            <button class="action-btn" @onclick="@(() => Navigation.NavigateTo("/teacher/profile"))">
+                <span class="btn-icon">👤</span>
+                <span>ملفي الشخصي</span>
+            </button>
         </div>
 
         @if (recentSessions.Any())
@@ -64,15 +70,15 @@
                                 <span class="session-date">@session.SessionDate.ToString("yyyy-MM-dd")</span>
                             </div>
                             <div class="session-details">
-                                <span>سورة @GetSurahName(session.SurahNumber): @session.FromAyahNumber-@session.ToAyahNumber</span>
+                                <span>@GetSurahName(session.SurahNumber): @session.FromAyahNumber-@session.ToAyahNumber</span>
                                 @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0)
                                 {
                                     <span class="errors">
-                                        @if (session.MajorErrorsCount > 0) { <text>جلي: @session.MajorErrorsCount</text> }
+                                        @if (session.MajorErrorsCount > 0) { <text>لحن جلي: @session.MajorErrorsCount</text> }
                                         @if (session.MinorErrorsCount > 0) 
                                         { 
                                             @if (session.MajorErrorsCount > 0) { <text> | </text> }
-                                            <text>خفي: @session.MinorErrorsCount</text> 
+                                            <text>لحن خفي: @session.MinorErrorsCount</text> 
                                         }
                                     </span>
                                 }
@@ -255,6 +261,7 @@
     private int todaySessionCount = 0;
     private int totalSessionCount = 0;
     private List<Domain.Entities.ListeningSession> recentSessions = new();
+    private List<Domain.Entities.SurahReference> surahs = new();
     private Guid currentTeacherId;
 
     protected override async Task OnInitializedAsync()
@@ -262,6 +269,7 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         currentTeacherId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
 
+        surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
         await LoadData();
     }
 
@@ -285,6 +293,7 @@
 
     private string GetSurahName(int surahNumber)
     {
-        return $"سورة {surahNumber}";
+        var surah = surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
+        return surah != null ? $"{surah.SurahNameArabic} ({surahNumber})" : $"سورة {surahNumber}";
     }
 }

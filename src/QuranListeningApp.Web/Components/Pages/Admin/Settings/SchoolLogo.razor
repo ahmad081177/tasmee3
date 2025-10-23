@@ -1,0 +1,360 @@
+@page "/admin/settings/logo"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using QuranListeningApp.Application.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Admin")]
+@inject AppSettingsService SettingsService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IWebHostEnvironment Environment
+
+<PageTitle>إعدادات شعار المدرسة</PageTitle>
+
+<div class="settings-container">
+    <div class="page-header">
+        <h3>شعار المدرسة</h3>
+        <button class="btn btn-secondary" @onclick="GoBack">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">الشعار الحالي</h5>
+            
+            @if (!string.IsNullOrEmpty(currentLogoPath))
+            {
+                <div class="current-logo-preview">
+                    <img src="/@currentLogoPath" alt="شعار المدرسة" class="logo-preview" />
+                    <button class="btn btn-danger mt-3" @onclick="RemoveLogo" disabled="@isProcessing">
+                        <i class="fas fa-trash me-2"></i>
+                        حذف الشعار
+                    </button>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">لا يوجد شعار حالياً</p>
+            }
+
+            <hr class="my-4" />
+
+            <h5 class="card-title">رفع شعار جديد</h5>
+            <p class="text-muted">الحد الأقصى لحجم الملف: 2 ميجابايت. الأنواع المسموح بها: PNG, JPG, JPEG</p>
+
+            <InputFile OnChange="HandleFileSelected" accept=".png,.jpg,.jpeg" class="form-control" disabled="@isProcessing" />
+
+            @if (selectedFile != null)
+            {
+                <div class="mt-3">
+                    <p><strong>الملف المحدد:</strong> @selectedFile.Name (@FormatFileSize(selectedFile.Size))</p>
+                    <button class="btn btn-primary" @onclick="UploadLogo" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span>جاري الرفع...</span>
+                        }
+                        else
+                        {
+                            <span><i class="fas fa-upload me-2"></i>رفع الشعار</span>
+                        }
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .settings-container {
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+        direction: rtl;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+    }
+
+    .card-body {
+        padding: 0;
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+
+    .current-logo-preview {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .logo-preview {
+        max-width: 300px;
+        max-height: 200px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px;
+        background: white;
+    }
+
+    .alert {
+        padding: 12px 20px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+
+    .alert-danger {
+        background-color: #fee;
+        color: #c33;
+        border: 1px solid #fcc;
+    }
+
+    .alert-success {
+        background-color: #efe;
+        color: #3c3;
+        border: 1px solid #cfc;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-primary {
+        background-color: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: #5568d3;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+        background-color: #c82333;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .text-muted {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .mt-3 {
+        margin-top: 1rem;
+    }
+
+    .mt-4 {
+        margin-top: 1.5rem;
+    }
+
+    .my-4 {
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .me-2 {
+        margin-left: 0.5rem;
+    }
+</style>
+
+@code {
+    private string? currentLogoPath;
+    private IBrowserFile? selectedFile;
+    private bool isProcessing = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    private const long MaxFileSize = 2 * 1024 * 1024; // 2 MB
+    private readonly string[] AllowedExtensions = { ".png", ".jpg", ".jpeg" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentLogo();
+    }
+
+    private async Task LoadCurrentLogo()
+    {
+        currentLogoPath = await SettingsService.GetLogoPathAsync();
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+    }
+
+    private async Task UploadLogo()
+    {
+        if (selectedFile == null)
+        {
+            errorMessage = "الرجاء اختيار ملف";
+            return;
+        }
+
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        // Validate file size
+        if (selectedFile.Size > MaxFileSize)
+        {
+            errorMessage = "حجم الملف كبير جداً. الحد الأقصى 2 ميجابايت";
+            return;
+        }
+
+        // Validate file extension
+        var extension = Path.GetExtension(selectedFile.Name).ToLowerInvariant();
+        if (!AllowedExtensions.Contains(extension))
+        {
+            errorMessage = "نوع الملف غير مسموح. استخدم PNG أو JPG فقط";
+            return;
+        }
+
+        try
+        {
+            isProcessing = true;
+
+            // Create uploads directory if it doesn't exist
+            var uploadsPath = Path.Combine(Environment.WebRootPath, "uploads");
+            Directory.CreateDirectory(uploadsPath);
+
+            // Generate unique filename
+            var fileName = $"logo{extension}";
+            var filePath = Path.Combine(uploadsPath, fileName);
+
+            // Delete old logo file if exists
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
+            // Save new file
+            await using var fileStream = new FileStream(filePath, FileMode.Create);
+            await selectedFile.OpenReadStream(MaxFileSize).CopyToAsync(fileStream);
+
+            // Update database
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUserId = Guid.Parse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            await SettingsService.UpdateLogoPathAsync($"uploads/{fileName}", currentUserId);
+
+            // Reload
+            await LoadCurrentLogo();
+            selectedFile = null;
+            successMessage = "تم رفع الشعار بنجاح";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"حدث خطأ أثناء رفع الملف: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task RemoveLogo()
+    {
+        try
+        {
+            isProcessing = true;
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            // Delete file
+            if (!string.IsNullOrEmpty(currentLogoPath))
+            {
+                var filePath = Path.Combine(Environment.WebRootPath, currentLogoPath);
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+
+            // Update database
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUserId = Guid.Parse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            await SettingsService.UpdateLogoPathAsync(null, currentUserId);
+
+            // Reload
+            await LoadCurrentLogo();
+            successMessage = "تم حذف الشعار بنجاح";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"حدث خطأ أثناء حذف الشعار: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} بايت";
+        if (bytes < 1024 * 1024)
+            return $"{bytes / 1024:F2} كيلوبايت";
+        return $"{bytes / (1024 * 1024):F2} ميجابايت";
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/admin/settings");
+}

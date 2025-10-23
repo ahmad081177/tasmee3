@@ -158,6 +158,33 @@ public class UserService
         }
     }
 
+    public async Task AcceptPledgeAsync(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user != null && user.Role == UserRole.Student)
+        {
+            user.PledgeAcceptedDate = DateTime.UtcNow;
+            await _userRepository.UpdateAsync(user);
+
+            // Log the pledge acceptance
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = userId,
+                Action = AuditAction.Updated,
+                EntityType = "User",
+                EntityId = userId,
+                NewValues = $"Pledge accepted at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    public async Task<bool> HasAcceptedPledgeAsync(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        return user?.PledgeAcceptedDate != null;
+    }
+
     public async Task<Dictionary<UserRole, int>> GetUserCountsByRoleAsync()
     {
         return new Dictionary<UserRole, int>

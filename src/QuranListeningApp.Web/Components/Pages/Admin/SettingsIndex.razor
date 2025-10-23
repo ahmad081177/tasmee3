@@ -1,0 +1,108 @@
+@page "/admin/settings"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+<PageTitle>إعدادات النظام</PageTitle>
+
+<div class="container" style="max-width: 1200px; margin: 40px auto; direction: rtl;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-gear-fill"></i> إعدادات النظام
+        </h2>
+        <a href="/admin/dashboard" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right"></i> رجوع للوحة التحكم
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- School Logo Settings -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem; color: #667eea;">
+                        <i class="bi bi-image"></i>
+                    </div>
+                    <h4 class="card-title mb-3">شعار المدرسة</h4>
+                    <p class="card-text text-muted mb-4">
+                        رفع وإدارة شعار المدرسة الذي سيظهر في النظام
+                    </p>
+                    <a href="/admin/settings/logo" class="btn btn-primary">
+                        <i class="bi bi-pencil-square"></i> إدارة الشعار
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pledge Text Settings -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem; color: #764ba2;">
+                        <i class="bi bi-file-text"></i>
+                    </div>
+                    <h4 class="card-title mb-3">نص التعهد</h4>
+                    <p class="card-text text-muted mb-4">
+                        تحرير نص التعهد الذي يوقع عليه الطلاب عند التسجيل
+                    </p>
+                    <a href="/admin/settings/pledge" class="btn btn-primary">
+                        <i class="bi bi-pencil-square"></i> إدارة التعهد
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- School Name Settings -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem; color: #f093fb;">
+                        <i class="bi bi-building"></i>
+                    </div>
+                    <h4 class="card-title mb-3">اسم المدرسة</h4>
+                    <p class="card-text text-muted mb-4">
+                        تحديث اسم المدرسة الذي يظهر في النظام
+                    </p>
+                    <a href="/admin/settings/school-name" class="btn btn-primary">
+                        <i class="bi bi-pencil-square"></i> إدارة الاسم
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Info (Future) -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 hover-card" style="opacity: 0.6;">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem; color: #6c757d;">
+                        <i class="bi bi-info-circle"></i>
+                    </div>
+                    <h4 class="card-title mb-3">معلومات النظام</h4>
+                    <p class="card-text text-muted mb-4">
+                        معلومات عن إصدار النظام والتحديثات
+                    </p>
+                    <button class="btn btn-secondary" disabled>
+                        <i class="bi bi-lock"></i> قريباً
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card {
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        border-color: #667eea;
+    }
+
+    .card-title {
+        color: #2d3748;
+        font-weight: 600;
+    }
+</style>

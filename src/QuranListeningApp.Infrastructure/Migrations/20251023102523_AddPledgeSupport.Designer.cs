@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QuranListeningApp.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using QuranListeningApp.Infrastructure.Data;
 namespace QuranListeningApp.Infrastructure.Migrations
 {
     [DbContext(typeof(QuranAppDbContext))]
-    partial class QuranAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251023102523_AddPledgeSupport")]
+    partial class AddPledgeSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

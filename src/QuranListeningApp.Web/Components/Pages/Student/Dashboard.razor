@@ -2,8 +2,11 @@
 @rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Student")]
 @using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject ISurahReferenceRepository SurahRepository
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -63,7 +66,7 @@
                             <div class="session-info">
                                 <div class="info-item">
                                     <span class="label">السورة:</span>
-                                    <span class="value">@session.SurahNumber</span>
+                                    <span class="value">@GetSurahName(session.SurahNumber)</span>
                                 </div>
                                 <div class="info-item">
                                     <span class="label">الآيات:</span>
@@ -75,11 +78,11 @@
                                 <div class="errors-row">
                                     @if (session.MajorErrorsCount > 0)
                                     {
-                                        <span class="error-badge major">جلي: @session.MajorErrorsCount</span>
+                                        <span class="error-badge major">لحن جلي: @session.MajorErrorsCount</span>
                                     }
                                     @if (session.MinorErrorsCount > 0)
                                     {
-                                        <span class="error-badge minor">خفي: @session.MinorErrorsCount</span>
+                                        <span class="error-badge minor">لحن خفي: @session.MinorErrorsCount</span>
                                     }
                                 </div>
                             }
@@ -112,6 +115,7 @@
         padding: 16px;
         max-width: 600px;
         margin: 0 auto;
+        text-align: end;
     }
 
     .page-header h2 {
@@ -328,14 +332,25 @@
     private int passedSessions = 0;
     private int failedSessions = 0;
     private List<Domain.Entities.ListeningSession> recentSessions = new();
+    private List<Domain.Entities.SurahReference> surahs = new();
     private Guid currentStudentId;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         currentStudentId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        
+        // Check if student has accepted the pledge
+        var hasAcceptedPledge = await UserService.HasAcceptedPledgeAsync(currentStudentId);
+        if (!hasAcceptedPledge)
+        {
+            Navigation.NavigateTo("/student/accept-pledge", true);
+            return;
+        }
+        
         studentName = authState.User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "";
 
+        surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
         await LoadData();
     }
 
@@ -353,5 +368,11 @@
         recentSessions = mySessions.OrderByDescending(s => s.SessionDate).Take(10).ToList();
 
         isLoading = false;
+    }
+
+    private string GetSurahName(int surahNumber)
+    {
+        var surah = surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
+        return surah != null ? $"{surah.SurahNameArabic} ({surahNumber})" : $"سورة {surahNumber}";
     }
 }

@@ -1,0 +1,161 @@
+@page "/admin/settings/pledge"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using QuranListeningApp.Application.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AppSettingsService AppSettingsService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>إدارة نص التعهد</PageTitle>
+
+<div class="container" style="max-width: 900px; margin: 40px auto; direction: rtl;">
+    <div class="card shadow-sm">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 class="mb-0">
+                <i class="bi bi-file-text"></i> إدارة نص التعهد
+            </h3>
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="@(() => errorMessage = "")"></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="@(() => successMessage = "")"></button>
+                </div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">نص التعهد:</label>
+                <textarea class="form-control" @bind="pledgeText" rows="20" 
+                          style="font-size: 1.1rem; line-height: 1.8; font-family: 'Traditional Arabic', 'Arial', sans-serif;"
+                          placeholder="أدخل نص التعهد الذي سيظهر للطلاب..."></textarea>
+                <div class="form-text">
+                    <i class="bi bi-info-circle"></i> سيظهر هذا النص للطلاب الجدد عند تسجيل الدخول لأول مرة.
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-start">
+                <button class="btn btn-primary" @onclick="SavePledgeText" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-save"></i> حفظ التعهد
+                </button>
+                
+                <button class="btn btn-outline-secondary" @onclick="LoadDefaultPledge" disabled="@isSaving">
+                    <i class="bi bi-arrow-clockwise"></i> استعادة النص الافتراضي
+                </button>
+                
+                <a href="/admin/settings" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-right"></i> رجوع
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-eye"></i> معاينة التعهد
+            </h5>
+        </div>
+        <div class="card-body" style="background-color: #f8f9fa;">
+            <div style="white-space: pre-wrap; font-size: 1.1rem; line-height: 1.8; font-family: 'Traditional Arabic', 'Arial', sans-serif; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                @if (!string.IsNullOrEmpty(pledgeText))
+                {
+                    @pledgeText
+                }
+                else
+                {
+                    <p class="text-muted">النص فارغ - سيتم استخدام النص الافتراضي للطلاب</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string pledgeText = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPledgeText();
+    }
+
+    private async Task LoadPledgeText()
+    {
+        try
+        {
+            pledgeText = await AppSettingsService.GetPledgeTextAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في تحميل نص التعهد: {ex.Message}";
+        }
+    }
+
+    private async Task SavePledgeText()
+    {
+        errorMessage = "";
+        successMessage = "";
+
+        if (string.IsNullOrWhiteSpace(pledgeText))
+        {
+            errorMessage = "يجب إدخال نص التعهد";
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+            
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+            await AppSettingsService.UpdatePledgeTextAsync(pledgeText, userId);
+            
+            successMessage = "تم حفظ نص التعهد بنجاح";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في حفظ نص التعهد: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void LoadDefaultPledge()
+    {
+        pledgeText = @"بسم الله الرحمن الرحيم
+
+الميثاق الطلابي
+
+أتعهد بما يلي:
+١. الالتزام بحفظ كتاب الله تعالى وتعلم تجويده
+٢. احترام المعلمين والإدارة والزملاء
+٣. المحافظة على أوقات الحضور والانصراف
+٤. العناية بنظافة المصحف والمكان
+٥. عدم الغياب إلا لعذر شرعي
+٦. المحافظة على الهدوء والسكينة داخل الحلقات
+٧. الالتزام بالآداب الإسلامية في التعامل
+
+أسأل الله التوفيق والسداد
+";
+        successMessage = "تم استعادة النص الافتراضي. اضغط 'حفظ' للتطبيق.";
+    }
+}

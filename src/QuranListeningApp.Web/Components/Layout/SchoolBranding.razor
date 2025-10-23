@@ -1,0 +1,74 @@
+@using QuranListeningApp.Application.Services
+@inject AppSettingsService SettingsService
+
+@if (!string.IsNullOrEmpty(logoPath) || !string.IsNullOrEmpty(schoolName))
+{
+    <div class="school-branding">
+        @if (!string.IsNullOrEmpty(logoPath))
+        {
+            <img src="/@logoPath" alt="شعار المدرسة" class="school-logo" />
+        }
+        @if (!string.IsNullOrEmpty(schoolName))
+        {
+            <span class="school-name">@schoolName</span>
+        }
+    </div>
+}
+
+@code {
+    private string? logoPath;
+    private string schoolName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            logoPath = await SettingsService.GetLogoPathAsync();
+            schoolName = await SettingsService.GetSchoolNameAsync();
+        }
+        catch
+        {
+            // If settings fail to load, just don't display branding
+        }
+    }
+}
+
+<style>
+    .school-branding {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+    }
+
+    .school-logo {
+        max-height: 40px;
+        max-width: 120px;
+        object-fit: contain;
+    }
+
+    .school-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: white;
+        white-space: nowrap;
+    }
+
+    /* Make it responsive */
+    @@media (max-width: 768px) {
+        .school-branding {
+            padding: 6px 12px;
+        }
+
+        .school-logo {
+            max-height: 32px;
+            max-width: 80px;
+        }
+
+        .school-name {
+            font-size: 0.95rem;
+        }
+    }
+</style>

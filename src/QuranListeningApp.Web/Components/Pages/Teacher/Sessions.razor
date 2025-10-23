@@ -4,10 +4,12 @@
 @using Microsoft.AspNetCore.Authorization
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Enums
+@using QuranListeningApp.Domain.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize(Roles = "Teacher")]
 @inject ListeningSessionService SessionService
 @inject UserService UserService
+@inject ISurahReferenceRepository SurahRepository
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -47,7 +49,7 @@
                     <div class="session-details">
                         <div class="detail-row">
                             <span class="label">السورة:</span>
-                            <span class="value">@session.SurahNumber | من آية: @session.FromAyahNumber - @session.ToAyahNumber</span>
+                            <span class="value">@GetSurahName(session.SurahNumber) | من آية: @session.FromAyahNumber - @session.ToAyahNumber</span>
                         </div>
                         @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0 || session.IsCompleted)
                         {
@@ -58,7 +60,7 @@
                                         <span class="error-count">
                                             @if (session.MajorErrorsCount > 0)
                                             {
-                                                <span>جلي: @session.MajorErrorsCount</span>
+                                                <span>لحن جلي: @session.MajorErrorsCount</span>
                                             }
                                             @if (session.MinorErrorsCount > 0)
                                             {
@@ -66,7 +68,7 @@
                                                 {
                                                     <span> | </span>
                                                 }
-                                                <span>خفي: @session.MinorErrorsCount</span>
+                                                <span>لحن خفي: @session.MinorErrorsCount</span>
                                             }
                                         </span>
                                     }
@@ -278,6 +280,7 @@
 
 @code {
     private List<Domain.Entities.ListeningSession> sessions = new();
+    private List<Domain.Entities.SurahReference> surahs = new();
     private bool isLoading = true;
     private Guid currentTeacherId;
 
@@ -285,6 +288,7 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         currentTeacherId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
         await LoadSessions();
     }
 
@@ -294,6 +298,12 @@
         var allSessions = await SessionService.GetAllSessionsAsync();
         sessions = allSessions.Where(s => s.TeacherUserId == currentTeacherId).OrderByDescending(s => s.SessionDate).ToList();
         isLoading = false;
+    }
+
+    private string GetSurahName(int surahNumber)
+    {
+        var surah = surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
+        return surah != null ? $"{surah.SurahNameArabic} ({surahNumber})" : $"سورة {surahNumber}";
     }
 
     private void AddSession() => Navigation.NavigateTo("/teacher/sessions/add");
