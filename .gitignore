@@ -9,7 +9,7 @@
 
 # Visual Studio cache/options directory
 .vs/
-
+SECRETS.MD
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
