@@ -7,29 +7,32 @@ namespace QuranListeningApp.Infrastructure.Repositories;
 
 public class SurahReferenceRepository : ISurahReferenceRepository
 {
-    private readonly QuranAppDbContext _context;
+    private readonly IDbContextFactory<QuranAppDbContext> _contextFactory;
 
-    public SurahReferenceRepository(QuranAppDbContext context)
+    public SurahReferenceRepository(IDbContextFactory<QuranAppDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<SurahReference?> GetByNumberAsync(int surahNumber)
     {
-        return await _context.SurahReferences
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.SurahReferences
             .FirstOrDefaultAsync(s => s.SurahNumber == surahNumber);
     }
 
     public async Task<IEnumerable<SurahReference>> GetAllAsync()
     {
-        return await _context.SurahReferences
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.SurahReferences
             .OrderBy(s => s.SurahNumber)
             .ToListAsync();
     }
 
     public async Task<IEnumerable<SurahReference>> GetMakkiSurahsAsync()
     {
-        return await _context.SurahReferences
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.SurahReferences
             .Where(s => s.IsMakki)
             .OrderBy(s => s.SurahNumber)
             .ToListAsync();
@@ -37,7 +40,8 @@ public class SurahReferenceRepository : ISurahReferenceRepository
 
     public async Task<IEnumerable<SurahReference>> GetMadaniSurahsAsync()
     {
-        return await _context.SurahReferences
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.SurahReferences
             .Where(s => !s.IsMakki)
             .OrderBy(s => s.SurahNumber)
             .ToListAsync();
@@ -45,11 +49,13 @@ public class SurahReferenceRepository : ISurahReferenceRepository
 
     public async Task<bool> ExistsAsync(int surahNumber)
     {
-        return await _context.SurahReferences.AnyAsync(s => s.SurahNumber == surahNumber);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.SurahReferences.AnyAsync(s => s.SurahNumber == surahNumber);
     }
 
     public async Task<int> GetTotalCountAsync()
     {
-        return await _context.SurahReferences.CountAsync();
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.SurahReferences.CountAsync();
     }
 }

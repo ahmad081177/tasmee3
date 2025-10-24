@@ -8,35 +8,39 @@ namespace QuranListeningApp.Infrastructure.Repositories;
 
 public class UserRepository : IUserRepository
 {
-    private readonly QuranAppDbContext _context;
+    private readonly IDbContextFactory<QuranAppDbContext> _contextFactory;
 
-    public UserRepository(QuranAppDbContext context)
+    public UserRepository(IDbContextFactory<QuranAppDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<User?> GetByIdAsync(Guid id)
     {
-        return await _context.Users
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users
             .Include(u => u.CreatedByUser)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
     public async Task<User?> GetByUsernameAsync(string username)
     {
-        return await _context.Users
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users
             .FirstOrDefaultAsync(u => u.Username == username);
     }
 
     public async Task<User?> GetByIdNumberAsync(string idNumber)
     {
-        return await _context.Users
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users
             .FirstOrDefaultAsync(u => u.IdNumber == idNumber);
     }
 
     public async Task<IEnumerable<User>> GetAllAsync()
     {
-        return await _context.Users
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users
             .Include(u => u.CreatedByUser)
             .OrderBy(u => u.FullNameArabic)
             .ToListAsync();
@@ -44,7 +48,8 @@ public class UserRepository : IUserRepository
 
     public async Task<IEnumerable<User>> GetByRoleAsync(UserRole role)
     {
-        return await _context.Users
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users
             .Where(u => u.Role == role)
             .OrderBy(u => u.FullNameArabic)
             .ToListAsync();
@@ -52,7 +57,8 @@ public class UserRepository : IUserRepository
 
     public async Task<IEnumerable<User>> GetActiveUsersAsync()
     {
-        return await _context.Users
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users
             .Where(u => u.IsActive)
             .OrderBy(u => u.FullNameArabic)
             .ToListAsync();
@@ -70,14 +76,15 @@ public class UserRepository : IUserRepository
 
     public async Task<IEnumerable<User>> GetStudentsByTeacherAsync(Guid teacherId)
     {
+        using var context = await _contextFactory.CreateDbContextAsync();
         // Get students who have sessions with this teacher
-        var studentIds = await _context.ListeningSessions
+        var studentIds = await context.ListeningSessions
             .Where(s => s.TeacherUserId == teacherId)
             .Select(s => s.StudentUserId)
             .Distinct()
             .ToListAsync();
 
-        return await _context.Users
+        return await context.Users
             .Where(u => studentIds.Contains(u.Id))
             .OrderBy(u => u.FullNameArabic)
             .ToListAsync();
@@ -85,52 +92,60 @@ public class UserRepository : IUserRepository
 
     public async Task<User> CreateAsync(User user)
     {
+        using var context = await _contextFactory.CreateDbContextAsync();
         user.CreatedDate = DateTime.UtcNow;
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
         return user;
     }
 
     public async Task<User> UpdateAsync(User user)
     {
+        using var context = await _contextFactory.CreateDbContextAsync();
         user.ModifiedDate = DateTime.UtcNow;
-        _context.Users.Update(user);
-        await _context.SaveChangesAsync();
+        context.Users.Update(user);
+        await context.SaveChangesAsync();
         return user;
     }
 
     public async Task DeleteAsync(Guid id)
     {
-        var user = await _context.Users.FindAsync(id);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var user = await context.Users.FindAsync(id);
         if (user != null)
         {
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
+            context.Users.Remove(user);
+            await context.SaveChangesAsync();
         }
     }
 
     public async Task<bool> ExistsAsync(Guid id)
     {
-        return await _context.Users.AnyAsync(u => u.Id == id);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.AnyAsync(u => u.Id == id);
     }
 
     public async Task<bool> UsernameExistsAsync(string username)
     {
-        return await _context.Users.AnyAsync(u => u.Username == username);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.AnyAsync(u => u.Username == username);
     }
 
     public async Task<bool> IdNumberExistsAsync(string idNumber)
     {
-        return await _context.Users.AnyAsync(u => u.IdNumber == idNumber);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.AnyAsync(u => u.IdNumber == idNumber);
     }
 
     public async Task<int> GetTotalCountAsync()
     {
-        return await _context.Users.CountAsync();
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.CountAsync();
     }
 
     public async Task<int> GetCountByRoleAsync(UserRole role)
     {
-        return await _context.Users.CountAsync(u => u.Role == role);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.CountAsync(u => u.Role == role);
     }
 }

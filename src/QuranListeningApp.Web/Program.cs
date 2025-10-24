@@ -26,7 +26,8 @@ var maxRetryCount = dbSettings.GetValue<int>("MaxRetryCount", 3);
 var maxRetryDelay = dbSettings.GetValue<int>("MaxRetryDelaySeconds", 2);
 var commandTimeout = dbSettings.GetValue<int>("CommandTimeoutSeconds", 30);
 
-builder.Services.AddDbContext<QuranAppDbContext>(options =>
+// Configure DbContextFactory for Blazor Server threading support
+builder.Services.AddDbContextFactory<QuranAppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sqlOptions =>
@@ -47,7 +48,14 @@ builder.Services.AddDbContext<QuranAppDbContext>(options =>
             sqlOptions.CommandTimeout(commandTimeout);
         }));
 
-// Register Repositories
+// Also register a scoped DbContext for dependency injection compatibility
+builder.Services.AddScoped<QuranAppDbContext>(provider =>
+{
+    var factory = provider.GetRequiredService<IDbContextFactory<QuranAppDbContext>>();
+    return factory.CreateDbContext();
+});
+
+// Register Repositories with DbContextFactory
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IListeningSessionRepository, ListeningSessionRepository>();
 builder.Services.AddScoped<ISurahReferenceRepository, SurahReferenceRepository>();

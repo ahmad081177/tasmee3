@@ -7,16 +7,17 @@ namespace QuranListeningApp.Infrastructure.Repositories;
 
 public class ListeningSessionRepository : IListeningSessionRepository
 {
-    private readonly QuranAppDbContext _context;
+    private readonly IDbContextFactory<QuranAppDbContext> _contextFactory;
 
-    public ListeningSessionRepository(QuranAppDbContext context)
+    public ListeningSessionRepository(IDbContextFactory<QuranAppDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<ListeningSession?> GetByIdAsync(Guid id)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .FirstOrDefaultAsync(s => s.Id == id);
@@ -24,7 +25,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetAllAsync()
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .OrderByDescending(s => s.SessionDate)
@@ -33,7 +35,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetByStudentIdAsync(Guid studentId)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => s.StudentUserId == studentId)
@@ -43,7 +46,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetByTeacherIdAsync(Guid teacherId)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => s.TeacherUserId == teacherId)
@@ -53,7 +57,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => s.SessionDate >= startDate && s.SessionDate <= endDate)
@@ -63,7 +68,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetSessionsByStudentIdAsync(Guid studentId, DateTime fromDate, DateTime toDate)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => s.StudentUserId == studentId && s.SessionDate >= fromDate && s.SessionDate <= toDate)
@@ -73,7 +79,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetSessionsByTeacherIdAsync(Guid teacherId, DateTime fromDate, DateTime toDate)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => s.TeacherUserId == teacherId && s.SessionDate >= fromDate && s.SessionDate <= toDate)
@@ -83,7 +90,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetSessionsByDateRangeAsync(DateTime fromDate, DateTime toDate)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => s.SessionDate >= fromDate && s.SessionDate <= toDate)
@@ -93,7 +101,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetCompletedSessionsAsync()
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => s.IsCompleted)
@@ -103,7 +112,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetPendingSessionsAsync()
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .Where(s => !s.IsCompleted)
@@ -113,7 +123,8 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<IEnumerable<ListeningSession>> GetRecentSessionsAsync(int count)
     {
-        return await _context.ListeningSessions
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions
             .Include(s => s.Student)
             .Include(s => s.Teacher)
             .OrderByDescending(s => s.SessionDate)
@@ -123,52 +134,60 @@ public class ListeningSessionRepository : IListeningSessionRepository
 
     public async Task<ListeningSession> CreateAsync(ListeningSession session)
     {
+        using var context = await _contextFactory.CreateDbContextAsync();
         session.CreatedDate = DateTime.UtcNow;
-        _context.ListeningSessions.Add(session);
-        await _context.SaveChangesAsync();
+        context.ListeningSessions.Add(session);
+        await context.SaveChangesAsync();
         return session;
     }
 
     public async Task<ListeningSession> UpdateAsync(ListeningSession session)
     {
+        using var context = await _contextFactory.CreateDbContextAsync();
         session.ModifiedDate = DateTime.UtcNow;
-        _context.ListeningSessions.Update(session);
-        await _context.SaveChangesAsync();
+        context.ListeningSessions.Update(session);
+        await context.SaveChangesAsync();
         return session;
     }
 
     public async Task DeleteAsync(Guid id)
     {
-        var session = await _context.ListeningSessions.FindAsync(id);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var session = await context.ListeningSessions.FindAsync(id);
         if (session != null)
         {
-            _context.ListeningSessions.Remove(session);
-            await _context.SaveChangesAsync();
+            context.ListeningSessions.Remove(session);
+            await context.SaveChangesAsync();
         }
     }
 
     public async Task<bool> ExistsAsync(Guid id)
     {
-        return await _context.ListeningSessions.AnyAsync(s => s.Id == id);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions.AnyAsync(s => s.Id == id);
     }
 
     public async Task<int> GetTotalCountAsync()
     {
-        return await _context.ListeningSessions.CountAsync();
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions.CountAsync();
     }
 
     public async Task<int> GetCompletedCountAsync()
     {
-        return await _context.ListeningSessions.CountAsync(s => s.IsCompleted);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions.CountAsync(s => s.IsCompleted);
     }
 
     public async Task<int> GetCountByStudentAsync(Guid studentId)
     {
-        return await _context.ListeningSessions.CountAsync(s => s.StudentUserId == studentId);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions.CountAsync(s => s.StudentUserId == studentId);
     }
 
     public async Task<int> GetCountByTeacherAsync(Guid teacherId)
     {
-        return await _context.ListeningSessions.CountAsync(s => s.TeacherUserId == teacherId);
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ListeningSessions.CountAsync(s => s.TeacherUserId == teacherId);
     }
 }

@@ -10,11 +10,11 @@ namespace QuranListeningApp.Infrastructure.Repositories;
 /// </summary>
 public class AppSettingsRepository : IAppSettingsRepository
 {
-    private readonly QuranAppDbContext _context;
+    private readonly IDbContextFactory<QuranAppDbContext> _contextFactory;
 
-    public AppSettingsRepository(QuranAppDbContext context)
+    public AppSettingsRepository(IDbContextFactory<QuranAppDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     /// <summary>
@@ -22,7 +22,8 @@ public class AppSettingsRepository : IAppSettingsRepository
     /// </summary>
     public async Task<AppSettings> GetSettingsAsync()
     {
-        var settings = await _context.AppSettings.FirstOrDefaultAsync();
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var settings = await context.AppSettings.FirstOrDefaultAsync();
         
         if (settings == null)
         {
@@ -35,8 +36,8 @@ public class AppSettingsRepository : IAppSettingsRepository
                 ModifiedDate = DateTime.UtcNow
             };
             
-            _context.AppSettings.Add(settings);
-            await _context.SaveChangesAsync();
+            context.AppSettings.Add(settings);
+            await context.SaveChangesAsync();
         }
         
         return settings;
@@ -47,9 +48,10 @@ public class AppSettingsRepository : IAppSettingsRepository
     /// </summary>
     public async Task UpdateSettingsAsync(AppSettings settings)
     {
+        using var context = await _contextFactory.CreateDbContextAsync();
         settings.ModifiedDate = DateTime.UtcNow;
-        _context.AppSettings.Update(settings);
-        await _context.SaveChangesAsync();
+        context.AppSettings.Update(settings);
+        await context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -57,7 +59,8 @@ public class AppSettingsRepository : IAppSettingsRepository
     /// </summary>
     public async Task EnsureSettingsExistAsync()
     {
-        var exists = await _context.AppSettings.AnyAsync();
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var exists = await context.AppSettings.AnyAsync();
         
         if (!exists)
         {
@@ -69,8 +72,8 @@ public class AppSettingsRepository : IAppSettingsRepository
                 ModifiedDate = DateTime.UtcNow
             };
             
-            _context.AppSettings.Add(defaultSettings);
-            await _context.SaveChangesAsync();
+            context.AppSettings.Add(defaultSettings);
+            await context.SaveChangesAsync();
         }
     }
 }
