@@ -13,8 +13,16 @@
 
 <div class="page-container">
     <div class="page-header">
-        <button class="btn-back" @onclick="GoBack">← رجوع</button>
-        <h2>تعديل الجلسة</h2>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">تعديل الجلسة</h3>
+                <p class="text-muted mb-0">تعديل بيانات جلسة السماع</p>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-left me-2"></i>
+                العودة
+            </button>
+        </div>
     </div>
 
     @if (isLoading)

@@ -15,9 +15,16 @@
 
 <div class="add-user-container">
     <div class="header">
-        <button class="btn-back" @onclick="GoBack">← المستخدمون</button>
-        <h3>إضافة مستخدم جديد</h3>
-        <div></div>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">إضافة مستخدم جديد</h3>
+                <p class="text-muted mb-0">إضافة مستخدم جديد للنظام</p>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-left me-2"></i>
+                العودة
+            </button>
+        </div>
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))
@@ -121,14 +128,7 @@
         font-weight: 600;
     }
 
-    .btn-back {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 8px;
-        color: #667eea;
-    }
+
 
     .alert-error {
         background: #fee;

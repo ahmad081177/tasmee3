@@ -5,6 +5,7 @@
 @using QuranListeningApp.Web.Components.Shared
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IWebHostEnvironment Environment
 
 <div class="page teacher-layout">
     <main class="teacher-main">
@@ -12,17 +13,25 @@
             <div class="container-fluid">
                 <nav class="navbar navbar-expand-lg teacher-navbar">
                     <a class="navbar-brand" href="/teacher">
+                        @if (Environment.IsDevelopment())
+                        {
+                            <span class="env-indicator dev">DEV</span>
+                        }
+                        else if (Environment.IsProduction())
+                        {
+                            <span class="env-indicator prod">PROD</span>
+                        }
                         <span class="navbar-brand-icon">📖</span>
                         نظام سماع القرآن
                     </a>
                     
                     <SchoolBranding />
                     
-                    <button class="navbar-toggler" type="button" @onclick="ToggleNavbar">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavTeacher" aria-controls="navbarNavTeacher" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     
-                    <div class="collapse navbar-collapse @(isNavbarCollapsed ? "" : "show")" id="navbarNavTeacher">
+                    <div class="collapse navbar-collapse" id="navbarNavTeacher">
                         <ul class="navbar-nav me-auto">
                             <li class="nav-item">
                                 <NavLink class="nav-link" href="/teacher" Match="NavLinkMatch.All">
@@ -44,21 +53,28 @@
                                     <span class="nav-icon">➕</span> تسجيل جلسة جديدة
                                 </NavLink>
                             </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/teacher/profile">
+                                    <span class="nav-icon">👤</span> الملف الشخصي
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/logout">
+                                    <span class="nav-icon">🚪</span> تسجيل الخروج
+                                </a>
+                            </li>
                         </ul>
                         
-                        <div class="navbar-nav">
-                            <div class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle user-info" href="#" role="button" data-bs-toggle="dropdown">
-                                    <AuthorizeView>
-                                        <Authorized>
-                                            <span class="welcome-text">@(context.User.Identity?.Name ?? "المعلم")</span>
-                                            <span class="role-badge teacher-badge">معلم</span>
-                                        </Authorized>
-                                    </AuthorizeView>
+                        <div class="navbar-nav d-none d-lg-flex">
+                            <div class="nav-item">
+                                <a class="nav-link" href="/teacher/profile">
+                                    <span class="nav-icon">👤</span> الملف الشخصي
                                 </a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="/logout">🚪 تسجيل الخروج</a></li>
-                                </ul>
+                            </div>
+                            <div class="nav-item">
+                                <a class="nav-link" href="/logout">
+                                    <span class="nav-icon">🚪</span> تسجيل الخروج
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -112,6 +128,25 @@
         font-size: 1.5rem;
     }
 
+    .env-indicator {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-right: 8px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .env-indicator.dev {
+        background: #28a745;
+        color: white;
+    }
+
+    .env-indicator.prod {
+        background: #dc3545;
+        color: white;
+    }
+
     .navbar-nav .nav-link {
         color: #E8F5E8 !important;
         padding: 8px 16px;
@@ -140,39 +175,6 @@
         text-align: center;
     }
 
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: #E8F5E8;
-        cursor: pointer;
-        padding: 8px 16px;
-        border-radius: 6px;
-        transition: background 0.3s ease;
-    }
-
-    .user-info:hover {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .welcome-text {
-        font-size: 0.9rem;
-        color: #E8F5E8;
-        font-weight: 500;
-    }
-
-    .role-badge {
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .teacher-badge {
-        background: rgba(255, 255, 255, 0.2);
-        color: #E8F5E8;
-    }
-
     .teacher-content {
         background: #FAFAFA;
         min-height: calc(100vh - 80px);
@@ -191,25 +193,6 @@
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
     }
 
-    .dropdown-menu {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        direction: rtl;
-    }
-
-    .dropdown-item {
-        color: #495057;
-        padding: 8px 16px;
-        transition: background 0.3s ease;
-    }
-
-    .dropdown-item:hover {
-        background: #f8f9fa;
-        color: #2E7D32;
-    }
-
     /* Responsive design */
     @@media (max-width: 768px) {
         .teacher-content {
@@ -225,46 +208,57 @@
             font-size: 1.2rem;
         }
         
-        .user-info {
+        .navbar-nav {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
             justify-content: center;
-            margin: 8px 0;
-        }
-
-        .welcome-text {
-            font-size: 0.8rem;
-        }
-
-        .role-badge {
-            font-size: 0.7rem;
-            padding: 2px 6px;
+            gap: 8px;
+            padding: 10px 0;
         }
         
-        .navbar-nav {
-            text-align: center;
+        .navbar-nav .nav-item {
+            flex: 1 1 calc(50% - 8px);
+            min-width: 140px;
+            max-width: 200px;
         }
         
         .navbar-nav .nav-link {
             justify-content: center;
-            padding: 10px 16px;
+            padding: 12px 8px;
+            margin: 0;
+            font-size: 14px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            text-align: center;
+            display: block;
         }
 
         .navbar-collapse {
             padding-top: 10px;
         }
 
-        .navbar-collapse.show {
-            display: block;
+        .navbar-toggler {
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .navbar-toggler-icon {
+            width: 24px;
+            height: 24px;
         }
     }
-</style>
 
-@code {
-    private bool isNavbarCollapsed = true;
-
-    private void ToggleNavbar()
-    {
-        Console.WriteLine($"[TeacherLayout] Navbar toggled - isNavbarCollapsed was: {isNavbarCollapsed}");
-        isNavbarCollapsed = !isNavbarCollapsed;
-        Console.WriteLine($"[TeacherLayout] Navbar toggled - isNavbarCollapsed now: {isNavbarCollapsed}");
+    .navbar-collapse {
+        transition: all 0.3s ease-in-out;
     }
-}
+
+    .navbar-collapse.show {
+        display: block !important;
+    }
+
+    .navbar-collapse.collapsing {
+        display: block;
+        overflow: hidden;
+    }
+</style>

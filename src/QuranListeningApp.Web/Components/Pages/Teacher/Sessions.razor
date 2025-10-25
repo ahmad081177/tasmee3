@@ -17,11 +17,22 @@
 
 <div class="sessions-container">
     <div class="page-header">
-        <div class="header-left">
-            <button class="btn-back" @onclick="BackToDashboard">← لوحة التحكم</button>
-            <h3>جلسات السماع</h3>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">جلسات السماع</h3>
+                <p class="text-muted mb-0">إدارة وعرض جلسات السماع</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" @onclick="BackToDashboard">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    العودة
+                </button>
+                <button class="btn btn-success" @onclick="AddSession">
+                    <i class="fas fa-plus me-2"></i>
+                    إضافة جلسة
+                </button>
+            </div>
         </div>
-        <button class="btn-add" @onclick="AddSession">+ جلسة</button>
     </div>
 
     @if (isLoading)
@@ -96,10 +107,16 @@
     }
 
     .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .page-header h3 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #495057;
     }
 
     .header-left {
@@ -121,12 +138,6 @@
 
     .btn-back:hover {
         background: #5a6268;
-    }
-
-    .page-header h3 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
     }
 
     .btn-add {

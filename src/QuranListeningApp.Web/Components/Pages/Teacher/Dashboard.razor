@@ -1,7 +1,6 @@
 @page "/teacher"
 @page "/teacher/dashboard"
 @layout TeacherLayout
-@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Teacher")]
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Interfaces
@@ -24,15 +23,15 @@
     else
     {
         <div class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card clickable-card" @onclick="NavigateToStudents">
                 <div class="stat-value">@studentCount</div>
                 <div class="stat-label">الطلاب</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable-card" @onclick="NavigateToSessions">
                 <div class="stat-value">@todaySessionCount</div>
                 <div class="stat-label">جلسات اليوم</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable-card" @onclick="NavigateToSessions">
                 <div class="stat-value">@totalSessionCount</div>
                 <div class="stat-label">إجمالي الجلسات</div>
             </div>
@@ -127,6 +126,16 @@
         border-radius: 12px;
         text-align: center;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, background 0.2s;
+    }
+
+    .clickable-card {
+        cursor: pointer;
+    }
+
+    .clickable-card:hover {
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     }
 
     .stat-value {
@@ -296,4 +305,7 @@
         var surah = surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
         return surah != null ? $"{surah.SurahNameArabic} ({surahNumber})" : $"سورة {surahNumber}";
     }
+
+    private void NavigateToStudents() => Navigation.NavigateTo("/teacher/students");
+    private void NavigateToSessions() => Navigation.NavigateTo("/teacher/sessions");
 }

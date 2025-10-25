@@ -1,17 +1,26 @@
 @page "/admin/settings"
+@layout AdminLayout
 @rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@inject NavigationManager Navigation
 
 <PageTitle>إعدادات النظام</PageTitle>
 
 <div class="container" style="max-width: 1200px; margin: 40px auto; direction: rtl;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-            <i class="bi bi-gear-fill"></i> إعدادات النظام
-        </h2>
-        <a href="/admin/dashboard" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-right"></i> رجوع للوحة التحكم
-        </a>
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>
+                    إعدادات النظام
+                </h3>
+                <p class="text-muted mb-0">إدارة إعدادات النظام والتطبيق</p>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-left me-2"></i>
+                العودة
+            </button>
+        </div>
     </div>
 
     <div class="row g-4">
@@ -105,4 +114,21 @@
         color: #2d3748;
         font-weight: 600;
     }
+
+    .page-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .page-header h3 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #495057;
+    }
 </style>
+
+@code {
+    private void GoBack() => Navigation.NavigateTo("/admin/dashboard");
+}

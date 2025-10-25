@@ -28,14 +28,12 @@ else if (Report != null)
 {
     <div class="container-fluid">
         <!-- Header with Back Button -->
-        <div class="d-flex justify-content-between align-items-center mb-4 header-left">
-            <div class="d-flex align-items-center">
-                <button class="btn btn-outline-primary btn-back me-3" @onclick="BackToDashboard">
-                    ← العودة
-                </button>
-                <h2 class="mb-0">تقرير تقدم الطالب</h2>
-            </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">تقرير تقدم الطالب</h2>
             <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" @onclick="BackToDashboard">
+                    <i class="fas fa-arrow-left me-2"></i>العودة
+                </button>
                 <button class="btn btn-success" @onclick="ExportToExcel" disabled="@ExportingExcel">
                     @if (ExportingExcel)
                     {

@@ -1,7 +1,6 @@
 @page "/admin"
 @page "/admin/dashboard"
 @layout AdminLayout
-@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Enums
@@ -29,7 +28,7 @@
     else
     {
         <div class="dashboard-grid">
-            <div class="stat-card stat-card-admin">
+            <div class="stat-card stat-card-admin clickable-card" @onclick="() => NavigateToUsers()">
                 <div class="stat-icon">👨‍💼</div>
                 <div class="stat-content">
                     <h3>@adminCount</h3>
@@ -37,7 +36,7 @@
                 </div>
             </div>
 
-            <div class="stat-card stat-card-teacher">
+            <div class="stat-card stat-card-teacher clickable-card" @onclick="() => NavigateToUsers()">
                 <div class="stat-icon">👨‍🏫</div>
                 <div class="stat-content">
                     <h3>@teacherCount</h3>
@@ -45,7 +44,7 @@
                 </div>
             </div>
 
-            <div class="stat-card stat-card-student">
+            <div class="stat-card stat-card-student clickable-card" @onclick="() => NavigateToUsers()">
                 <div class="stat-icon">👨‍🎓</div>
                 <div class="stat-content">
                     <h3>@studentCount</h3>
@@ -53,7 +52,7 @@
                 </div>
             </div>
 
-            <div class="stat-card stat-card-session">
+            <div class="stat-card stat-card-session clickable-card" @onclick="() => NavigateToSessions()">
                 <div class="stat-icon">📖</div>
                 <div class="stat-content">
                     <h3>@sessionCount</h3>
@@ -87,12 +86,6 @@
                     <button class="btn btn-warning w-100 py-3" @onclick="NavigateToSettings">
                         <span style="font-size: 1.5rem;">⚙️</span><br />
                         <span>الإعدادات</span>
-                    </button>
-                </div>
-                <div class="col-md-6">
-                    <button class="btn btn-secondary w-100 py-3" @onclick='() => Navigation.NavigateTo("/admin/profile")'>
-                        <span style="font-size: 1.5rem;">👤</span><br />
-                        <span>الملف الشخصي</span>
                     </button>
                 </div>
             </div>
@@ -148,9 +141,18 @@
         transition: transform 0.3s;
     }
 
-    .stat-card:hover {
+    .clickable-card {
+        cursor: pointer;
+    }
+
+    .stat-card:hover,
+    .clickable-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+
+    .clickable-card:hover {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     }
 
     .stat-icon {

@@ -14,10 +14,16 @@
 <PageTitle>تعديل مستخدم</PageTitle>
 
 <div class="edit-user-container">
-    <div class="header">
-        <button class="btn-back" @onclick="GoBack">← المستخدمون</button>
-        <h3>تعديل المستخدم</h3>
-        <button class="btn-delete" @onclick="ConfirmDelete">🗑️</button>
+    <div class="header d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">تعديل المستخدم</h3>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-left me-2"></i>العودة
+            </button>
+            <button class="btn btn-danger" @onclick="ConfirmDelete">
+                <i class="fas fa-trash me-2"></i>حذف
+            </button>
+        </div>
     </div>
 
     @if (isLoading)
@@ -151,14 +157,7 @@
         font-weight: 600;
     }
 
-    .btn-back {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 8px;
-        color: #667eea;
-    }
+
 
     .btn-delete {
         background: none;

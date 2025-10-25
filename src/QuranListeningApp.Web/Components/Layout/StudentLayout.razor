@@ -2,59 +2,50 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
 @using QuranListeningApp.Web.Components.Shared
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IWebHostEnvironment Environment
 
-<div class="page admin-layout">
-    <main class="admin-main">
-        <div class="top-row admin-header">
+<div class="page student-layout">
+    <main class="student-main">
+        <div class="top-row student-header">
             <div class="container-fluid">
-                <nav class="navbar navbar-expand-lg admin-navbar">
-                    <a class="navbar-brand" href="/admin">
-                        <span class="navbar-brand-icon">⚙️</span>
-                        نظام إدارة السماع
+                <nav class="navbar navbar-expand-lg student-navbar">
+                    <a class="navbar-brand" href="/student/dashboard">
                         @if (Environment.IsDevelopment())
                         {
                             <span class="env-indicator dev">DEV</span>
                         }
-                        else if (Environment.IsProduction())
+                        else
                         {
                             <span class="env-indicator prod">PROD</span>
                         }
+                        <span class="navbar-brand-icon">📖</span>
+                        سماع القرآن الكريم
                     </a>
                     
                     <SchoolBranding />
                     
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavStudent" aria-controls="navbarNavStudent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     
-                    <div class="collapse navbar-collapse" id="navbarNav">
+                    <div class="collapse navbar-collapse" id="navbarNavStudent">
                         <ul class="navbar-nav me-auto">
                             <li class="nav-item">
-                                <NavLink class="nav-link" href="/admin" Match="NavLinkMatch.All">
+                                <NavLink class="nav-link" href="/student/dashboard" Match="NavLinkMatch.All">
                                     <span class="nav-icon">🏠</span> لوحة التحكم
                                 </NavLink>
                             </li>
                             <li class="nav-item">
-                                <NavLink class="nav-link" href="/admin/users">
-                                    <span class="nav-icon">👥</span> المستخدمون
-                                </NavLink>
-                            </li>
-                            <li class="nav-item">
-                                <NavLink class="nav-link" href="/admin/sessions">
-                                    <span class="nav-icon">📝</span> جلسات السماع
-                                </NavLink>
-                            </li>
-                            <li class="nav-item">
-                                <NavLink class="nav-link" href="/admin/reports">
+                                <NavLink class="nav-link" href="/student/reports">
                                     <span class="nav-icon">📊</span> التقارير
                                 </NavLink>
                             </li>
                             <li class="nav-item">
-                                <NavLink class="nav-link" href="/admin/profile">
+                                <NavLink class="nav-link" href="/student/profile">
                                     <span class="nav-icon">👤</span> الملف الشخصي
                                 </NavLink>
                             </li>
@@ -67,7 +58,7 @@
                         
                         <div class="navbar-nav d-none d-lg-flex">
                             <div class="nav-item">
-                                <a class="nav-link" href="/admin/profile">
+                                <a class="nav-link" href="/student/profile">
                                     <span class="nav-icon">👤</span> الملف الشخصي
                                 </a>
                             </div>
@@ -82,7 +73,7 @@
             </div>
         </div>
 
-        <article class="content px-4 admin-content">
+        <article class="content px-4 student-content">
             @Body
         </article>
     </main>
@@ -97,25 +88,25 @@
 </div>
 
 <style>
-    .admin-layout {
+    .student-layout {
         direction: rtl;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         min-height: 100vh;
     }
 
-    .admin-navbar {
-        background: linear-gradient(135deg, #1565C0 0%, #1976D2 100%);
+    .student-navbar {
+        background: linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%);
         padding: 8px 0;
     }
 
-    .admin-header {
-        background: linear-gradient(135deg, #1565C0 0%, #1976D2 100%);
-        border-bottom: 2px solid #0D47A1;
+    .student-header {
+        background: linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%);
+        border-bottom: 2px solid #4A148C;
         padding: 0;
     }
 
     .navbar-brand {
-        color: #E3F2FD !important;
+        color: #F3E5F5 !important;
         font-size: 1.2rem;
         font-weight: 600;
         display: flex;
@@ -148,7 +139,7 @@
     }
 
     .navbar-nav .nav-link {
-        color: #E3F2FD !important;
+        color: #F3E5F5 !important;
         padding: 8px 16px;
         margin: 0 4px;
         border-radius: 6px;
@@ -175,13 +166,13 @@
         text-align: center;
     }
 
-    .admin-content {
+    .student-content {
         background: #FAFAFA;
         min-height: calc(100vh - 80px);
         padding: 24px;
     }
 
-    .admin-main {
+    .student-main {
         flex: 1;
     }
 
@@ -195,7 +186,7 @@
 
     /* Responsive design */
     @@media (max-width: 768px) {
-        .admin-content {
+        .student-content {
             padding: 15px;
         }
 

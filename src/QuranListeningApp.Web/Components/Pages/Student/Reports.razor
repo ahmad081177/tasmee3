@@ -1,0 +1,803 @@
+@page "/student/reports"
+@layout StudentLayout
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Student")]
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ListeningSessionService SessionService
+@inject UserService UserService
+@inject ISurahReferenceRepository SurahRepository
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page-container">
+    <div class="page-header">
+        <h2>تقارير الطالب</h2>
+        <p class="subtitle">تقرير مفصل عن أدائك في حفظ القرآن الكريم</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">جاري التحميل...</div>
+    }
+    else
+    {
+        <!-- Overall Performance Summary -->
+        <div class="performance-summary">
+            <h3>ملخص الأداء العام</h3>
+            <div class="summary-grid">
+                <div class="summary-card total">
+                    <div class="card-icon">📊</div>
+                    <div class="card-content">
+                        <div class="card-value">@totalSessions</div>
+                        <div class="card-label">إجمالي الجلسات</div>
+                    </div>
+                </div>
+                <div class="summary-card success">
+                    <div class="card-icon">✅</div>
+                    <div class="card-content">
+                        <div class="card-value">@passedSessions</div>
+                        <div class="card-label">جلسات ناجحة</div>
+                    </div>
+                </div>
+                <div class="summary-card progress">
+                    <div class="card-icon">📈</div>
+                    <div class="card-content">
+                        <div class="card-value">@successRate%</div>
+                        <div class="card-label">معدل النجاح</div>
+                    </div>
+                </div>
+                <div class="summary-card ayahs">
+                    <div class="card-icon">📖</div>
+                    <div class="card-content">
+                        <div class="card-value">@totalAyahsRecited</div>
+                        <div class="card-label">إجمالي الآيات</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Analysis -->
+        <div class="section">
+            <h3>تحليل الأخطاء</h3>
+            <div class="error-analysis">
+                <div class="error-stats">
+                    <div class="error-stat major">
+                        <div class="stat-number">@totalMajorErrors</div>
+                        <div class="stat-label">أخطاء جلية</div>
+                        <div class="stat-average">متوسط: @avgMajorErrors لكل جلسة</div>
+                    </div>
+                    <div class="error-stat minor">
+                        <div class="stat-number">@totalMinorErrors</div>
+                        <div class="stat-label">أخطاء خفية</div>
+                        <div class="stat-average">متوسط: @avgMinorErrors لكل جلسة</div>
+                    </div>
+                </div>
+                
+                @if (totalSessions > 0)
+                {
+                    <div class="improvement-indicator">
+                        <strong>اتجاه التحسن:</strong>
+                        @if (improvementTrend > 0)
+                        {
+                            <span class="trend-positive">📈 تحسن بنسبة @improvementTrend%</span>
+                        }
+                        else if (improvementTrend < 0)
+                        {
+                            <span class="trend-negative">📉 انخفاض بنسبة @Math.Abs(improvementTrend)%</span>
+                        }
+                        else
+                        {
+                            <span class="trend-stable">➡️ أداء مستقر</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Surah Progress -->
+        <div class="section">
+            <h3>تقدم السور</h3>
+            @if (surahProgress.Any())
+            {
+                <div class="surah-progress-list">
+                    @foreach (var surah in surahProgress.OrderByDescending(s => s.SessionsCount))
+                    {
+                        <div class="surah-progress-item">
+                            <div class="surah-header">
+                                <span class="surah-name">@surah.SurahName</span>
+                                <span class="surah-stats">
+                                    @surah.SessionsCount جلسة | 
+                                    @surah.TotalAyahs آية |
+                                    @surah.SuccessRate% نجاح
+                                </span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: @surah.SuccessRate%"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">لا توجد بيانات متاحة</p>
+            }
+        </div>
+
+        <!-- Recent Activity Timeline -->
+        <div class="section">
+            <h3>النشاط الأخير</h3>
+            @if (recentSessions.Any())
+            {
+                <div class="timeline">
+                    @foreach (var session in recentSessions.Take(15))
+                    {
+                        <div class="timeline-item @(session.IsCompleted ? "passed" : "failed")">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header">
+                                    <span class="session-date">@session.SessionDate.ToString("dd/MM/yyyy")</span>
+                                    <span class="session-status">
+                                        @if (session.IsCompleted)
+                                        {
+                                            <span class="status-passed">✓ نجح</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="status-failed">✗ لم ينجح</span>
+                                        }
+                                    </span>
+                                </div>
+                                <div class="timeline-details">
+                                    <span class="surah-info">@GetSurahName(session.SurahNumber)</span>
+                                    <span class="ayah-range">الآيات @session.FromAyahNumber - @session.ToAyahNumber</span>
+                                    @if (session.MajorErrorsCount > 0 || session.MinorErrorsCount > 0)
+                                    {
+                                        <div class="error-summary">
+                                            @if (session.MajorErrorsCount > 0)
+                                            {
+                                                <span class="error-count major">@session.MajorErrorsCount جلي</span>
+                                            }
+                                            @if (session.MinorErrorsCount > 0)
+                                            {
+                                                <span class="error-count minor">@session.MinorErrorsCount خفي</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <div class="teacher-name">المعلم: @session.Teacher?.FullNameArabic</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">لا توجد جلسات حديثة</p>
+            }
+        </div>
+
+        <!-- Monthly Progress Chart -->
+        <div class="section">
+            <h3>الإحصائيات الشهرية</h3>
+            @if (monthlyStats.Any())
+            {
+                <div class="monthly-chart">
+                    @foreach (var month in monthlyStats.OrderByDescending(m => m.Month))
+                    {
+                        <div class="month-bar">
+                            <div class="month-label">@month.MonthName</div>
+                            <div class="bar-container">
+                                <div class="bar passed" style="height: @(month.PassedSessions * 20)px" title="@month.PassedSessions جلسة ناجحة"></div>
+                                <div class="bar failed" style="height: @(month.FailedSessions * 20)px" title="@month.FailedSessions جلسة غير ناجحة"></div>
+                            </div>
+                            <div class="month-total">@month.TotalSessions</div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">لا توجد بيانات شهرية</p>
+            }
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="/student/dashboard" class="btn-secondary">العودة للوحة الرئيسية</a>
+        </div>
+    }
+</div>
+
+<style>
+    .page-container {
+        padding: 16px;
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: end;
+    }
+
+    .page-header {
+        margin-bottom: 24px;
+    }
+
+    .page-header h2 {
+        margin: 0 0 8px 0;
+        color: #333;
+        font-size: 28px;
+    }
+
+    .subtitle {
+        color: #666;
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    /* Performance Summary */
+    .performance-summary {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        margin-bottom: 24px;
+    }
+
+    .performance-summary h3 {
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 20px;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+    }
+
+    .summary-card {
+        padding: 20px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 80px;
+    }
+
+    .summary-card.total {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .summary-card.success {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+
+    .summary-card.progress {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        color: white;
+    }
+
+    .summary-card.ayahs {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+    }
+
+    .card-icon {
+        font-size: 24px;
+        opacity: 0.9;
+    }
+
+    .card-value {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .card-label {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    /* Section Styling */
+    .section {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        margin-bottom: 24px;
+    }
+
+    .section h3 {
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 20px;
+    }
+
+    /* Error Analysis */
+    .error-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .error-stat {
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .error-stat.major {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        color: white;
+    }
+
+    .error-stat.minor {
+        background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+        color: white;
+    }
+
+    .stat-number {
+        font-size: 32px;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    .stat-average {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .improvement-indicator {
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .trend-positive {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .trend-negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .trend-stable {
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    /* Surah Progress */
+    .surah-progress-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .surah-progress-item {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .surah-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .surah-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .surah-stats {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .progress-bar {
+        background: #e9ecef;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    /* Timeline */
+    .timeline {
+        position: relative;
+        padding-right: 20px;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        right: 8px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 16px;
+        padding-right: 40px;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        right: -2px;
+        top: 8px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #dee2e6;
+        border: 3px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .timeline-item.passed .timeline-marker {
+        background: #28a745;
+    }
+
+    .timeline-item.failed .timeline-marker {
+        background: #dc3545;
+    }
+
+    .timeline-content {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        border-right: 3px solid #dee2e6;
+    }
+
+    .timeline-item.passed .timeline-content {
+        border-right-color: #28a745;
+    }
+
+    .timeline-item.failed .timeline-content {
+        border-right-color: #dc3545;
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .session-date {
+        font-weight: 600;
+        color: #333;
+        font-size: 13px;
+    }
+
+    .status-passed {
+        background: #28a745;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .status-failed {
+        background: #dc3545;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .timeline-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+
+    .surah-info {
+        color: #495057;
+        font-weight: 500;
+    }
+
+    .ayah-range {
+        color: #6c757d;
+    }
+
+    .error-summary {
+        display: flex;
+        gap: 8px;
+    }
+
+    .error-count {
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .error-count.major {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .error-count.minor {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .teacher-name {
+        font-size: 11px;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+
+    /* Monthly Chart */
+    .monthly-chart {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        align-items: end;
+        padding: 20px;
+        overflow-x: auto;
+    }
+
+    .month-bar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 60px;
+    }
+
+    .month-label {
+        font-size: 11px;
+        margin-bottom: 8px;
+        color: #666;
+        writing-mode: horizontal-tb;
+    }
+
+    .bar-container {
+        display: flex;
+        align-items: end;
+        gap: 2px;
+        height: 100px;
+        margin-bottom: 8px;
+    }
+
+    .bar {
+        width: 20px;
+        min-height: 4px;
+        border-radius: 2px 2px 0 0;
+        transition: height 0.3s ease;
+    }
+
+    .bar.passed {
+        background: #28a745;
+    }
+
+    .bar.failed {
+        background: #dc3545;
+    }
+
+    .month-total {
+        font-size: 11px;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .no-data {
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+        padding: 20px;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: background 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .error-stats {
+            grid-template-columns: 1fr;
+        }
+        
+        .surah-header {
+            flex-direction: column;
+            align-items: start;
+            gap: 4px;
+        }
+        
+        .timeline-header {
+            flex-direction: column;
+            align-items: start;
+            gap: 4px;
+        }
+        
+        .monthly-chart {
+            justify-content: start;
+        }
+    }
+</style>
+
+@code {
+    private bool isLoading = true;
+    private string studentName = "";
+    private int totalSessions = 0;
+    private int passedSessions = 0;
+    private int failedSessions = 0;
+    private int successRate = 0;
+    private int totalAyahsRecited = 0;
+    private int totalMajorErrors = 0;
+    private int totalMinorErrors = 0;
+    private decimal avgMajorErrors = 0;
+    private decimal avgMinorErrors = 0;
+    private int improvementTrend = 0;
+    private List<Domain.Entities.ListeningSession> recentSessions = new();
+    private List<Domain.Entities.SurahReference> surahs = new();
+    private List<SurahProgressItem> surahProgress = new();
+    private List<MonthlyStatItem> monthlyStats = new();
+    private Guid currentStudentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentStudentId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        studentName = authState.User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "";
+
+        surahs = (await SurahRepository.GetAllAsync()).OrderBy(s => s.SurahNumber).ToList();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        var allSessions = await SessionService.GetAllSessionsAsync();
+        var mySessions = allSessions.Where(s => s.StudentUserId == currentStudentId).OrderBy(s => s.SessionDate).ToList();
+
+        // Basic stats
+        totalSessions = mySessions.Count;
+        passedSessions = mySessions.Count(s => s.IsCompleted);
+        failedSessions = totalSessions - passedSessions;
+        successRate = totalSessions > 0 ? (int)Math.Round((double)passedSessions / totalSessions * 100) : 0;
+
+        // Ayah count
+        totalAyahsRecited = mySessions.Sum(s => s.ToAyahNumber - s.FromAyahNumber + 1);
+
+        // Error analysis
+        totalMajorErrors = mySessions.Sum(s => s.MajorErrorsCount);
+        totalMinorErrors = mySessions.Sum(s => s.MinorErrorsCount);
+        avgMajorErrors = totalSessions > 0 ? Math.Round((decimal)totalMajorErrors / totalSessions, 1) : 0;
+        avgMinorErrors = totalSessions > 0 ? Math.Round((decimal)totalMinorErrors / totalSessions, 1) : 0;
+
+        // Improvement trend (compare last 30% vs first 30% of sessions)
+        if (totalSessions >= 6)
+        {
+            var sampleSize = Math.Max(2, totalSessions / 3);
+            var earlierSessions = mySessions.Take(sampleSize);
+            var recentSessionsList = mySessions.TakeLast(sampleSize);
+            
+            var earlierSuccessRate = earlierSessions.Count() > 0 ? (double)earlierSessions.Count(s => s.IsCompleted) / earlierSessions.Count() : 0;
+            var recentSuccessRate = recentSessionsList.Count() > 0 ? (double)recentSessionsList.Count(s => s.IsCompleted) / recentSessionsList.Count() : 0;
+            
+            improvementTrend = (int)Math.Round((recentSuccessRate - earlierSuccessRate) * 100);
+        }
+
+        // Surah progress
+        surahProgress = mySessions
+            .GroupBy(s => s.SurahNumber)
+            .Select(g => new SurahProgressItem
+            {
+                SurahNumber = g.Key,
+                SurahName = GetSurahName(g.Key),
+                SessionsCount = g.Count(),
+                PassedCount = g.Count(s => s.IsCompleted),
+                TotalAyahs = g.Sum(s => s.ToAyahNumber - s.FromAyahNumber + 1),
+                SuccessRate = g.Count() > 0 ? (int)Math.Round((double)g.Count(s => s.IsCompleted) / g.Count() * 100) : 0
+            })
+            .ToList();
+
+        // Monthly statistics
+        monthlyStats = mySessions
+            .GroupBy(s => new { s.SessionDate.Year, s.SessionDate.Month })
+            .Select(g => new MonthlyStatItem
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                MonthName = GetMonthName(g.Key.Month),
+                TotalSessions = g.Count(),
+                PassedSessions = g.Count(s => s.IsCompleted),
+                FailedSessions = g.Count(s => !s.IsCompleted)
+            })
+            .OrderByDescending(m => m.Year)
+            .ThenByDescending(m => m.Month)
+            .Take(6)
+            .ToList();
+
+        recentSessions = mySessions.OrderByDescending(s => s.SessionDate).ToList();
+
+        isLoading = false;
+    }
+
+    private string GetSurahName(int surahNumber)
+    {
+        var surah = surahs.FirstOrDefault(s => s.SurahNumber == surahNumber);
+        return surah != null ? $"{surah.SurahNameArabic} ({surahNumber})" : $"سورة {surahNumber}";
+    }
+
+    private string GetMonthName(int month)
+    {
+        var months = new[] { "", "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", 
+                           "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+        return month >= 1 && month <= 12 ? months[month] : "";
+    }
+
+    public class SurahProgressItem
+    {
+        public int SurahNumber { get; set; }
+        public string SurahName { get; set; } = "";
+        public int SessionsCount { get; set; }
+        public int PassedCount { get; set; }
+        public int TotalAyahs { get; set; }
+        public int SuccessRate { get; set; }
+    }
+
+    public class MonthlyStatItem
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public string MonthName { get; set; } = "";
+        public int TotalSessions { get; set; }
+        public int PassedSessions { get; set; }
+        public int FailedSessions { get; set; }
+    }
+}

@@ -1,0 +1,1071 @@
+@page "/admin/import-students"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using QuranListeningApp.Application.Services
+@using QuranListeningApp.Domain.Entities
+@using QuranListeningApp.Domain.Enums
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Text
+@using System.Globalization
+@inject UserService UserService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page-container">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">استيراد الطلاب من ملف CSV</h2>
+            <p class="subtitle mb-0">رفع ملف CSV لإضافة مجموعة من الطلاب دفعة واحدة</p>
+        </div>
+        <button class="btn btn-outline-secondary" @onclick="BackToUsers">
+            <i class="fas fa-arrow-left me-2"></i>العودة
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success">
+            <span class="alert-icon">✓</span>
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-error">
+            <span class="alert-icon">✗</span>
+            @errorMessage
+        </div>
+    }
+
+    @if (validationErrors.Any())
+    {
+        <div class="alert alert-warning">
+            <span class="alert-icon">⚠️</span>
+            <strong>تم العثور على أخطاء في الملف:</strong>
+            <ul class="error-list">
+                @foreach (var error in validationErrors)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="import-section">
+        <div class="step-indicator">
+            <div class="step @(currentStep >= 1 ? "active" : "")">
+                <div class="step-number">1</div>
+                <div class="step-title">اختر الملف</div>
+            </div>
+            <div class="step @(currentStep >= 2 ? "active" : "")">
+                <div class="step-number">2</div>
+                <div class="step-title">معاينة البيانات</div>
+            </div>
+            <div class="step @(currentStep >= 3 ? "active" : "")">
+                <div class="step-number">3</div>
+                <div class="step-title">الاستيراد</div>
+            </div>
+        </div>
+
+        @if (currentStep == 1)
+        {
+            <div class="upload-section">
+                <div class="file-format-info">
+                    <h3>معلومات تنسيق الملف</h3>
+                    <p>يجب أن يحتوي ملف CSV على الأعمدة التالية:</p>
+                    <div class="format-grid">
+                        <div class="format-item required">
+                            <span class="column-name">الاسم الكامل بالعربية</span>
+                            <span class="column-desc">FullNameArabic</span>
+                        </div>
+                        <div class="format-item required">
+                            <span class="column-name">الاسم الكامل بالإنجليزية</span>
+                            <span class="column-desc">FullNameEnglish</span>
+                        </div>
+                        <div class="format-item required">
+                            <span class="column-name">اسم المستخدم</span>
+                            <span class="column-desc">Username</span>
+                        </div>
+                        <div class="format-item optional">
+                            <span class="column-name">المستوى الدراسي</span>
+                            <span class="column-desc">GradeLevel</span>
+                        </div>
+                        <div class="format-item optional">
+                            <span class="column-name">ملاحظات</span>
+                            <span class="column-desc">Notes</span>
+                        </div>
+                    </div>
+                    <div class="format-notes">
+                        <p><strong>ملاحظات مهمة:</strong></p>
+                        <ul>
+                            <li>الأعمدة المطلوبة (Required) يجب أن تحتوي على قيم</li>
+                            <li>أسماء المستخدمين يجب أن تكون فريدة</li>
+                            <li>سيتم إنشاء كلمة مرور افتراضية: "123456"</li>
+                            <li>يمكن للطلاب تغيير كلمة المرور بعد تسجيل الدخول</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="sample-download">
+                    <button class="btn-download" @onclick="DownloadSampleFile">
+                        <span class="btn-icon">📥</span>
+                        تحميل ملف نموذجي
+                    </button>
+                </div>
+
+                <div class="file-upload">
+                    <InputFile OnChange="HandleFileSelection" accept=".csv" class="file-input" />
+                    <div class="upload-zone @(isDragOver ? "drag-over" : "")" 
+                         @ondragover="HandleDragOver" 
+                         @ondragleave="HandleDragLeave"
+                         @ondrop="HandleDrop">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">
+                            @if (selectedFile != null)
+                            {
+                                <strong>تم اختيار: @selectedFile.Name</strong>
+                                <p>حجم الملف: @FormatFileSize(selectedFile.Size)</p>
+                            }
+                            else
+                            {
+                                <strong>اسحب ملف CSV هنا أو انقر للاختيار</strong>
+                                <p>الحد الأقصى لحجم الملف: 5 MB</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (selectedFile != null)
+                {
+                    <div class="action-buttons">
+                        <button class="btn-primary" @onclick="ParseCsvFile" disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span>جاري المعالجة...</span>
+                            }
+                            else
+                            {
+                                <span>تحليل الملف</span>
+                            }
+                        </button>
+                        <button class="btn-secondary" @onclick="ClearFile">إلغاء</button>
+                    </div>
+                }
+            </div>
+        }
+        else if (currentStep == 2 && parsedStudents.Any())
+        {
+            <div class="preview-section">
+                <div class="preview-header">
+                    <h3>معاينة البيانات المستوردة</h3>
+                    <div class="preview-stats">
+                        <span class="stat">إجمالي الطلاب: @parsedStudents.Count</span>
+                        <span class="stat">صالح: @validStudents</span>
+                        @if (duplicateCount > 0)
+                        {
+                            <span class="stat error">مكرر: @duplicateCount</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="preview-table-container">
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <th>الحالة</th>
+                                <th>الاسم بالعربية</th>
+                                <th>الاسم بالإنجليزية</th>
+                                <th>اسم المستخدم</th>
+                                <th>المستوى</th>
+                                <th>ملاحظات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in parsedStudents.Take(20))
+                            {
+                                <tr class="@(student.IsValid ? "valid" : "invalid")">
+                                    <td>
+                                        @if (student.IsValid)
+                                        {
+                                            <span class="status-icon valid">✓</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="status-icon invalid" title="@string.Join(", ", student.Errors)">✗</span>
+                                        }
+                                    </td>
+                                    <td>@student.FullNameArabic</td>
+                                    <td>@student.FullNameEnglish</td>
+                                    <td>@student.Username</td>
+                                    <td>@student.GradeLevel</td>
+                                    <td>@student.Notes</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (parsedStudents.Count > 20)
+                {
+                    <p class="table-note">يتم عرض أول 20 طالب فقط. سيتم استيراد جميع الطلاب الصالحين.</p>
+                }
+
+                <div class="action-buttons">
+                    <button class="btn-primary" @onclick="ProcessImport" disabled="@(isProcessing || validStudents == 0)">
+                        @if (isProcessing)
+                        {
+                            <span>جاري الاستيراد...</span>
+                        }
+                        else
+                        {
+                            <span>استيراد @validStudents طالب</span>
+                        }
+                    </button>
+                    <button class="btn-secondary" @onclick="BackToFileSelection">العودة لاختيار ملف آخر</button>
+                </div>
+            </div>
+        }
+        else if (currentStep == 3)
+        {
+            <div class="result-section">
+                <div class="result-header">
+                    <div class="result-icon">🎉</div>
+                    <h3>تم الاستيراد بنجاح!</h3>
+                </div>
+                <div class="result-summary">
+                    <div class="summary-item">
+                        <span class="summary-label">تم إنشاء:</span>
+                        <span class="summary-value">@importedCount طالب</span>
+                    </div>
+                    @if (skippedCount > 0)
+                    {
+                        <div class="summary-item">
+                            <span class="summary-label">تم تخطي:</span>
+                            <span class="summary-value">@skippedCount طالب (مكرر أو غير صالح)</span>
+                        </div>
+                    }
+                </div>
+                <div class="action-buttons">
+                    <a href="/admin/users" class="btn-primary">عرض جميع المستخدمين</a>
+                    <button class="btn-secondary" @onclick="StartOver">استيراد ملف آخر</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-container {
+        padding: 16px;
+        max-width: 900px;
+        margin: 0 auto;
+        text-align: end;
+    }
+
+    .page-header {
+        margin-bottom: 24px;
+    }
+
+
+
+    .page-header h2 {
+        margin: 0 0 8px 0;
+        color: #333;
+        font-size: 28px;
+    }
+
+    .subtitle {
+        color: #666;
+        margin: 0;
+        font-size: 14px;
+    }
+
+    /* Alerts */
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: start;
+        gap: 12px;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    .alert-icon {
+        font-size: 16px;
+        margin-top: 2px;
+    }
+
+    .error-list {
+        margin: 8px 0 0 0;
+        padding-right: 20px;
+    }
+
+    .error-list li {
+        margin-bottom: 4px;
+    }
+
+    /* Import Section */
+    .import-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    /* Step Indicator */
+    .step-indicator {
+        display: flex;
+        background: #f8f9fa;
+        padding: 24px;
+        justify-content: center;
+        gap: 40px;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        opacity: 0.5;
+        transition: opacity 0.3s ease;
+    }
+
+    .step.active {
+        opacity: 1;
+    }
+
+    .step-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #dee2e6;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .step.active .step-number {
+        background: #007bff;
+        color: white;
+    }
+
+    .step-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: #666;
+    }
+
+    .step.active .step-title {
+        color: #333;
+        font-weight: 600;
+    }
+
+    /* Upload Section */
+    .upload-section {
+        padding: 24px;
+    }
+
+    .file-format-info {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .file-format-info h3 {
+        margin: 0 0 16px 0;
+        color: #333;
+        font-size: 18px;
+    }
+
+    .format-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 12px;
+        margin: 16px 0;
+    }
+
+    .format-item {
+        padding: 12px;
+        border-radius: 6px;
+        border-right: 4px solid;
+    }
+
+    .format-item.required {
+        background: #fff3cd;
+        border-right-color: #ffc107;
+    }
+
+    .format-item.optional {
+        background: #e2f3ff;
+        border-right-color: #17a2b8;
+    }
+
+    .column-name {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #333;
+    }
+
+    .column-desc {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        font-family: monospace;
+    }
+
+    .format-notes {
+        margin-top: 16px;
+    }
+
+    .format-notes ul {
+        margin: 8px 0 0 0;
+        padding-right: 20px;
+    }
+
+    .format-notes li {
+        margin-bottom: 4px;
+        font-size: 14px;
+    }
+
+    .sample-download {
+        text-align: center;
+        margin-bottom: 24px;
+    }
+
+    .btn-download {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.3s ease;
+    }
+
+    .btn-download:hover {
+        background: #218838;
+    }
+
+    .btn-icon {
+        font-size: 16px;
+    }
+
+    /* File Upload */
+    .file-upload {
+        position: relative;
+    }
+
+    .file-input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .upload-zone {
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        background: #fafafa;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+        border-color: #007bff;
+        background: #f0f8ff;
+    }
+
+    .upload-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.6;
+    }
+
+    .upload-text strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 16px;
+    }
+
+    .upload-text p {
+        margin: 0;
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* Preview Section */
+    .preview-section {
+        padding: 24px;
+    }
+
+    .preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .preview-header h3 {
+        margin: 0;
+        color: #333;
+        font-size: 20px;
+    }
+
+    .preview-stats {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .stat {
+        background: #e9ecef;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .stat.error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    /* Preview Table */
+    .preview-table-container {
+        overflow-x: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+
+    .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .preview-table th {
+        background: #f8f9fa;
+        padding: 12px 8px;
+        text-align: center;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 1px solid #dee2e6;
+        white-space: nowrap;
+    }
+
+    .preview-table td {
+        padding: 12px 8px;
+        text-align: center;
+        border-bottom: 1px solid #f0f0f0;
+        white-space: nowrap;
+    }
+
+    .preview-table tr.valid {
+        background: #f8fff8;
+    }
+
+    .preview-table tr.invalid {
+        background: #fff8f8;
+    }
+
+    .status-icon {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .status-icon.valid {
+        color: #28a745;
+    }
+
+    .status-icon.invalid {
+        color: #dc3545;
+        cursor: help;
+    }
+
+    .table-note {
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+        font-style: italic;
+    }
+
+    /* Result Section */
+    .result-section {
+        padding: 40px 24px;
+        text-align: center;
+    }
+
+    .result-header {
+        margin-bottom: 24px;
+    }
+
+    .result-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+    }
+
+    .result-header h3 {
+        margin: 0;
+        color: #28a745;
+        font-size: 24px;
+    }
+
+    .result-summary {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 16px;
+    }
+
+    .summary-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .summary-label {
+        color: #666;
+    }
+
+    .summary-value {
+        font-weight: 600;
+        color: #333;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        min-width: 120px;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #0056b3;
+    }
+
+    .btn-primary:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+        text-decoration: none;
+        color: white;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .step-indicator {
+            gap: 20px;
+        }
+
+        .format-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .preview-header {
+            flex-direction: column;
+            align-items: start;
+        }
+
+        .preview-stats {
+            justify-content: start;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+
+@code {
+    private int currentStep = 1;
+    private IBrowserFile? selectedFile;
+    private bool isDragOver = false;
+    private bool isProcessing = false;
+    private string successMessage = "";
+    private string errorMessage = "";
+    private List<string> validationErrors = new();
+    private List<StudentImportModel> parsedStudents = new();
+    private int validStudents = 0;
+    private int duplicateCount = 0;
+    private int importedCount = 0;
+    private int skippedCount = 0;
+
+    private void BackToUsers()
+    {
+        Navigation.NavigateTo("/admin/users");
+    }
+
+    private async Task DownloadSampleFile()
+    {
+        var csvContent = "FullNameArabic,FullNameEnglish,Username,GradeLevel,Notes\n" +
+                        "أحمد محمد علي,Ahmed Mohammed Ali,ahmed_ali,الصف الأول,طالب متميز\n" +
+                        "فاطمة أحمد حسن,Fatima Ahmed Hassan,fatima_hassan,الصف الثاني,\n" +
+                        "محمد عبدالله سالم,Mohammed Abdullah Salem,mohammed_salem,الصف الثالث,يحتاج متابعة\n" +
+                        "عائشة حسن محمد,Aisha Hassan Mohammed,aisha_mohammed,الصف الأول,طالبة نشيطة\n" +
+                        "عبدالرحمن علي أحمد,Abdulrahman Ali Ahmed,abdulrahman_ahmed,الصف الثاني,";
+
+        var fileName = "sample_students.csv";
+        var bytes = Encoding.UTF8.GetBytes(csvContent);
+        var base64 = Convert.ToBase64String(bytes);
+
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64, "text/csv");
+    }
+
+    private void HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        ClearMessages();
+    }
+
+    private void HandleDragOver()
+    {
+        isDragOver = true;
+    }
+
+    private void HandleDragLeave()
+    {
+        isDragOver = false;
+    }
+
+    private void HandleDrop()
+    {
+        isDragOver = false;
+    }
+
+    private async Task ParseCsvFile()
+    {
+        if (selectedFile == null) return;
+
+        isProcessing = true;
+        ClearMessages();
+
+        try
+        {
+            if (selectedFile.Size > 5 * 1024 * 1024) // 5MB limit
+            {
+                errorMessage = "حجم الملف كبير جداً. الحد الأقصى المسموح 5 ميجابايت.";
+                return;
+            }
+
+            using var stream = selectedFile.OpenReadStream(5 * 1024 * 1024);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+
+            var content = await reader.ReadToEndAsync();
+            var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+            if (lines.Length < 2)
+            {
+                errorMessage = "الملف فارغ أو لا يحتوي على بيانات كافية.";
+                return;
+            }
+
+            // Parse header
+            var header = lines[0].Split(',');
+            var requiredColumns = new[] { "FullNameArabic", "FullNameEnglish", "Username" };
+            var missingColumns = requiredColumns.Where(col => !header.Contains(col)).ToList();
+
+            if (missingColumns.Any())
+            {
+                errorMessage = $"الأعمدة المطلوبة مفقودة: {string.Join(", ", missingColumns)}";
+                return;
+            }
+
+            // Get existing usernames for duplicate checking
+            var existingUsers = await UserService.GetAllUsersAsync();
+            var existingUsernames = existingUsers.Select(u => u.Username).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            parsedStudents.Clear();
+
+            // Parse data rows
+            for (int i = 1; i < lines.Length; i++)
+            {
+                var values = ParseCsvLine(lines[i]);
+                if (values.Length < 3) continue; // Skip incomplete rows
+
+                var student = new StudentImportModel
+                {
+                    RowNumber = i + 1,
+                    FullNameArabic = GetValue(values, header, "FullNameArabic"),
+                    FullNameEnglish = GetValue(values, header, "FullNameEnglish"),
+                    Username = GetValue(values, header, "Username"),
+                    GradeLevel = GetValue(values, header, "GradeLevel"),
+                    Notes = GetValue(values, header, "Notes")
+                };
+
+                // Validate student data
+                ValidateStudent(student, existingUsernames);
+                parsedStudents.Add(student);
+            }
+
+            validStudents = parsedStudents.Count(s => s.IsValid);
+            duplicateCount = parsedStudents.Count(s => s.Errors.Any(e => e.Contains("مكرر")));
+
+            if (parsedStudents.Any())
+            {
+                currentStep = 2;
+                successMessage = $"تم تحليل الملف بنجاح. العثور على {parsedStudents.Count} طالب.";
+            }
+            else
+            {
+                errorMessage = "لا توجد بيانات صالحة في الملف.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في تحليل الملف: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private string[] ParseCsvLine(string line)
+    {
+        var values = new List<string>();
+        bool inQuotes = false;
+        var currentValue = new StringBuilder();
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                values.Add(currentValue.ToString().Trim());
+                currentValue.Clear();
+            }
+            else
+            {
+                currentValue.Append(c);
+            }
+        }
+
+        values.Add(currentValue.ToString().Trim());
+        return values.ToArray();
+    }
+
+    private string GetValue(string[] values, string[] header, string columnName)
+    {
+        var index = Array.IndexOf(header, columnName);
+        return index >= 0 && index < values.Length ? values[index].Trim('"').Trim() : "";
+    }
+
+    private void ValidateStudent(StudentImportModel student, HashSet<string> existingUsernames)
+    {
+        student.Errors.Clear();
+
+        if (string.IsNullOrWhiteSpace(student.FullNameArabic))
+            student.Errors.Add("الاسم بالعربية مطلوب");
+
+        if (string.IsNullOrWhiteSpace(student.FullNameEnglish))
+            student.Errors.Add("الاسم بالإنجليزية مطلوب");
+
+        if (string.IsNullOrWhiteSpace(student.Username))
+            student.Errors.Add("اسم المستخدم مطلوب");
+        else if (existingUsernames.Contains(student.Username))
+            student.Errors.Add("اسم المستخدم مكرر");
+        else if (student.Username.Length < 3)
+            student.Errors.Add("اسم المستخدم قصير جداً (3 أحرف على الأقل)");
+
+        student.IsValid = !student.Errors.Any();
+    }
+
+    private async Task ProcessImport()
+    {
+        isProcessing = true;
+        ClearMessages();
+
+        try
+        {
+            var validStudentsToImport = parsedStudents.Where(s => s.IsValid).ToList();
+            importedCount = 0;
+            skippedCount = parsedStudents.Count - validStudentsToImport.Count;
+
+            foreach (var student in validStudentsToImport)
+            {
+                try
+                {
+                    var user = new User
+                    {
+                        FullNameArabic = student.FullNameArabic,
+                        Username = student.Username,
+                        PasswordHash = "123456", // Will be hashed by the service
+                        Role = UserRole.Student,
+                        GradeLevel = student.GradeLevel,
+                        IsActive = true,
+                        CreatedDate = DateTime.UtcNow
+                    };
+
+                    // Get current admin user ID (this would come from auth context)
+                    var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                    var currentAdminId = Guid.Parse(authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+
+                    await UserService.CreateUserAsync(user, currentAdminId);
+                    importedCount++;
+                }
+                catch (Exception ex)
+                {
+                    validationErrors.Add($"خطأ في إنشاء الطالب {student.FullNameArabic}: {ex.Message}");
+                    skippedCount++;
+                }
+            }
+
+            currentStep = 3;
+            successMessage = $"تم استيراد {importedCount} طالب بنجاح!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطأ في عملية الاستيراد: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void BackToFileSelection()
+    {
+        currentStep = 1;
+        selectedFile = null;
+        parsedStudents.Clear();
+        ClearMessages();
+    }
+
+    private void StartOver()
+    {
+        currentStep = 1;
+        selectedFile = null;
+        parsedStudents.Clear();
+        ClearMessages();
+        importedCount = 0;
+        skippedCount = 0;
+    }
+
+    private void ClearFile()
+    {
+        selectedFile = null;
+        ClearMessages();
+    }
+
+    private void ClearMessages()
+    {
+        successMessage = "";
+        errorMessage = "";
+        validationErrors.Clear();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        const int unit = 1024;
+        if (bytes < unit) return $"{bytes} B";
+        int exp = (int)(Math.Log(bytes) / Math.Log(unit));
+        return $"{bytes / Math.Pow(unit, exp):F1} {("KMGTPE")[exp - 1]}B";
+    }
+
+    public class StudentImportModel
+    {
+        public int RowNumber { get; set; }
+        public string FullNameArabic { get; set; } = "";
+        public string FullNameEnglish { get; set; } = "";
+        public string Username { get; set; } = "";
+        public string GradeLevel { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public List<string> Errors { get; set; } = new();
+        public bool IsValid { get; set; } = false;
+    }
+}
+
+<script>
+    window.downloadFile = (filename, content, contentType) => {
+        const blob = new Blob([atob(content)], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
+</script>

@@ -1,4 +1,5 @@
 @page "/admin/profile"
+@layout AdminLayout
 @rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @using QuranListeningApp.Application.Services
@@ -9,11 +10,28 @@
 @inject NavigationManager Navigation
 
 <div class="container" style="max-width: 900px; margin: 40px auto; direction: rtl;">
+    <!-- Page Header with Back Button -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">
+                    <i class="fas fa-user me-2"></i>
+                    الملف الشخصي
+                </h3>
+                <p class="text-muted mb-0">إدارة الملف الشخصي والمعلومات</p>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-left me-2"></i>
+                العودة
+            </button>
+        </div>
+    </div>
+
     <div class="card shadow-sm">
         <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-            <h3 class="mb-0">
+            <h4 class="mb-0">
                 <i class="bi bi-person-circle"></i> الملف الشخصي
-            </h3>
+            </h4>
         </div>
         <div class="card-body">
             @if (!string.IsNullOrEmpty(errorMessage))
@@ -81,10 +99,6 @@
                     }
                     <i class="bi bi-save"></i> حفظ التغييرات
                 </button>
-                
-                <a href="/admin/dashboard" class="btn btn-outline-secondary btn-lg">
-                    <i class="bi bi-arrow-right"></i> رجوع
-                </a>
             </div>
         </div>
     </div>
@@ -229,4 +243,6 @@
             isSaving = false;
         }
     }
+
+    private void GoBack() => Navigation.NavigateTo("/admin/dashboard");
 }

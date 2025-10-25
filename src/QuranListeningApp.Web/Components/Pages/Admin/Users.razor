@@ -12,11 +12,29 @@
 
 <div class="users-container">
     <div class="page-header">
-        <div class="header-left">
-            <button class="btn-back" @onclick="BackToDashboard">← لوحة التحكم</button>
-            <h3>المستخدمون</h3>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">المستخدمون</h3>
+                <p class="text-muted mb-0">إدارة وعرض المستخدمين</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" @onclick="BackToDashboard">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    العودة
+                </button>
+                @if (activeRole == UserRole.Student)
+                {
+                    <a href="/admin/import-students" class="btn btn-info">
+                        <i class="fas fa-upload me-2"></i>
+                        استيراد CSV
+                    </a>
+                }
+                <button class="btn btn-success" @onclick="AddUser">
+                    <i class="fas fa-plus me-2"></i>
+                    إضافة
+                </button>
+            </div>
         </div>
-        <button class="btn-add" @onclick="AddUser">+ إضافة</button>
     </div>
 
     <div class="filter-tabs">
@@ -138,20 +156,35 @@
         gap: 12px;
     }
 
-    .btn-back {
-        background: #6c757d;
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-import {
+        background: #17a2b8;
         color: white;
         border: none;
-        padding: 8px 12px;
-        border-radius: 4px;
-        cursor: pointer;
+        padding: 8px 16px;
+        border-radius: 6px;
         font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
         transition: background-color 0.2s;
     }
 
-    .btn-back:hover {
-        background: #5a6268;
+    .btn-import:hover {
+        background: #138496;
+        text-decoration: none;
+        color: white;
     }
+
+
 
     .page-header h3 {
         margin: 0;

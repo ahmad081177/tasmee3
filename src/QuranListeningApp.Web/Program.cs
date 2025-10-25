@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using QuranListeningApp.Application.Services;
@@ -127,6 +128,21 @@ app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add logout handler endpoint
+app.MapGet("/logout-handler", async (HttpContext context) =>
+{
+    // Clear the authentication cookie
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    
+    // Set cache control headers to prevent back button access
+    context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private";
+    context.Response.Headers["Pragma"] = "no-cache";
+    context.Response.Headers["Expires"] = "-1";
+    
+    // Redirect to login page
+    return Results.Redirect("/login");
+});
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

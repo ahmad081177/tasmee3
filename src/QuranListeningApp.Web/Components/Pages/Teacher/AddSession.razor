@@ -19,9 +19,16 @@
 
 <div class="add-session-container">
     <div class="header">
-        <button class="btn-back" @onclick="GoBack">← جلسات السماع</button>
-        <h3>تسجيل جلسة سماع</h3>
-        <div></div>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">تسجيل جلسة سماع</h3>
+                <p class="text-muted mb-0">إضافة جلسة سماع جديدة</p>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-left me-2"></i>
+                العودة
+            </button>
+        </div>
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))

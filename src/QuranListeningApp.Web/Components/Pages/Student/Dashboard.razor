@@ -1,5 +1,5 @@
 @page "/student/dashboard"
-@rendermode InteractiveServer
+@layout StudentLayout
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Student")]
 @using QuranListeningApp.Application.Services
 @using QuranListeningApp.Domain.Interfaces
@@ -27,6 +27,16 @@
             {
                 <p class="grade">الصف: @gradeLevel</p>
             }
+        </div>
+
+        <div class="navigation-section">
+            <a href="/student/reports" class="nav-button reports">
+                <div class="nav-icon">📊</div>
+                <div class="nav-content">
+                    <div class="nav-title">التقارير التفصيلية</div>
+                    <div class="nav-subtitle">عرض تقرير شامل عن أدائك</div>
+                </div>
+            </a>
         </div>
 
         <div class="stats-grid">
@@ -148,6 +158,57 @@
         margin: 0;
         opacity: 0.9;
         font-size: 14px;
+    }
+
+    .navigation-section {
+        margin-bottom: 24px;
+    }
+
+    .nav-button {
+        display: flex;
+        align-items: center;
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        gap: 16px;
+    }
+
+    .nav-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .nav-button.reports {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+
+    .nav-icon {
+        font-size: 24px;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    .nav-content {
+        flex: 1;
+        text-align: start;
+    }
+
+    .nav-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .nav-subtitle {
+        font-size: 12px;
+        opacity: 0.9;
     }
 
     .stats-grid {
